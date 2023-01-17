@@ -1,2 +1,2 @@
-# chem-tabpfn
-Adapatation TabPFN for chemical property prediction tasks
+# Ensemble TabPFN
+Adaptation TabPFN with ensemble learning for classification tasks of arbitrary size
