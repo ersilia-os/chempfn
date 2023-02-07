@@ -2,6 +2,7 @@ from sklearn.utils import resample
 
 
 def get_sampler(sampler_type):
+    assert sampler_type in ["bootstrap"], "Sampler not recognized"
     return {"bootstrap": BootstrapSampler}[sampler_type]
 
 

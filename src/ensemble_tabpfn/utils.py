@@ -20,12 +20,16 @@ def chunker(X, chunk_size):
         return chunks
 
     chunks = []
-    for chunk in range(num_chunks):
-        chunks.append((chunk * chunk_size, (chunk + 1) * chunk_size))
+    for chunk in range(num_chunks):   
+        beg = chunk * chunk_size
+        end = num_samples if chunk==num_chunks-1 else (chunk + 1) * chunk_size
+        chunks.append((beg, end))
     return chunks
 
 
 def aggregate_arrays(X):
     X = np.array(X, dtype="object")
-    # TODO aggregate
+    ensembles, chunks, samples = X.shape
+    if ensembles == 1 and chunks == 1:
+        return X.reshape(samples)
     return X

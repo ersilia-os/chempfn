@@ -14,4 +14,4 @@ classifier = TabPFNClassifier(device="cpu", N_ensemble_configurations=32)
 classifier.fit(X_train, y_train)
 y_eval, p_eval = classifier.predict(X_test, return_winning_probability=True)
 
-print("Accuracy", accuracy_score(y_test, y_eval))
+print(type(y_eval))
