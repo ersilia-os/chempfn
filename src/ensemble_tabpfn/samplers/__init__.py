@@ -2,7 +2,7 @@ from sklearn.utils import resample
 
 
 def get_sampler(sampler_type):
-    return {"bootstrap": BootstrapSampler}
+    return {"bootstrap": BootstrapSampler}[sampler_type]
 
 
 class BootstrapSampler:

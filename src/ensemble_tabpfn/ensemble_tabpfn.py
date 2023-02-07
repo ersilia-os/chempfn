@@ -7,6 +7,7 @@ import torch
 from tabpfn import TabPFNClassifier
 
 from samplers import get_sampler
+from utils import _chunker, _aggregate_arrays
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 _TABPFN_MAX_INP_SIZE = 1000
@@ -21,16 +22,10 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         chunk_size=2000,
     ):
         assert sampler in ["bootstrap"], "Sampler not recognized"
-        self.sampler = get_sampler[sampler]()
+        self.sampler = get_sampler(sampler_type=sampler)()
         self.max_iters = max_iters
         self.n_ensemble_configurations = n_ensemble_configurations
         self.chunk_size = chunk_size
-
-    @property
-    def model(self):
-        return TabPFNClassifier(
-            device=DEVICE, N_ensemble_configurations=self.n_ensemble_configurations
-        )
 
     def _subsample(self, X, y, stratify=None):
         _x, _y = self._sampler.sample(X, y, stratify=stratify)
@@ -39,30 +34,28 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         return (_x, _y)
 
     def _generate_ensemble(self, X, y, stratify=None):
-        self.ensembles_ = []
         for i in range(self._num_iters):
             data = self._subsample(X, y)
             self._ensembles.append(data)
 
     def _chunk_data(self, X):
-        total_data = X.shape[0]
-        num_chunks = math.ceil(total_data / self.chunk_size)
-
-        chunks = []
-        for chunk in range(num_chunks):
-            chunks.append((chunk * self.chunk_size, (chunk + 1) * self.chunk_size))
-        return chunks
+        return _chunker(X, self.chunk_size)
 
     def fit(self, X, y, stratify=None):
         X, y = check_X_y(X, y, force_all_finite=False)
-
+        self.ensembles_ = []
         if X.shape[0] < _TABPFN_MAX_INP_SIZE:
             # If the input size is smaller than what TabPFN can
             # work with, then generating ensembles is not required
+            self.ensembles_.append((X, y))
             return
         self._generate_ensemble(X, y)
 
     def _predict(self, X, return_prob=False):
+
+        model = TabPFNClassifier(
+            device=DEVICE, N_ensemble_configurations=self.n_ensemble_configurations
+        )
 
         result = []
         chunks = self._chunk_data(X)
@@ -70,17 +63,16 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             for start, end in chunks:
                 X_chunk = X[start:end]
                 _x, _y = data
-                self.model.fit(_x, _y)
+                model.fit(_x, _y)
                 result.append(
-                    (
-                        self.model.predict(
-                            X_chunk, return_winning_probability=return_prob
-                        )
-                    )
+                    (model.predict(X_chunk, return_winning_probability=return_prob))
                 )
+
+        return result
 
     @staticmethod
     def _aggregate_preds(preds):
+        preds = _aggregate_arrays(preds)
         return preds
 
     def predict(self, X):
@@ -92,3 +84,6 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
     def predict_proba(self, X):
         check_is_fitted(self, attributes="ensembles_")
         y, p = self._predict(X, return_prob=True)
+        preds = self._aggregate_preds(y)
+        probs = self._aggregate_preds(p)
+        return preds, probs
