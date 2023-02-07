@@ -1,51 +1,94 @@
 import math
+
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.utils.validation import check_X_y, check_is_fitted
 import numpy as np
+import torch
 from tabpfn import TabPFNClassifier
 
-from samplers import BootstrapSampler
+from samplers import get_sampler
 
-# TODO: Inherit from sklearn BaseEstimator and ClassifierMixin
-class EnsembleTabPFN:
-    def __init__(self):
-        self.model = TabPFNClassifier(device="cuda", N_ensemble_configurations=4)
-        self._sampler = BootstrapSampler()
-        self._num_iters = 1000
-        self._is_fitted = False
-        self._ensemble = []
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+_TABPFN_MAX_INP_SIZE = 1000
 
-    # TODO convert to getting indices only; perhaps we can measure storage difference between storing data and indices
-    def _subsample(self, X, y):
-        _x, _y = self._sampler.sample(X, y, stratify=y)
-        assert len(_x) == 1000
-        assert len(_y) == 1000
+
+class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
+    def __init__(
+        self,
+        max_iters=100,
+        sampler="bootstrap",
+        n_ensemble_configurations=4,
+        chunk_size=2000,
+    ):
+        assert sampler in ["bootstrap"], "Sampler not recognized"
+        self.sampler = get_sampler[sampler]()
+        self.max_iters = max_iters
+        self.n_ensemble_configurations = n_ensemble_configurations
+        self.chunk_size = chunk_size
+
+    @property
+    def model(self):
+        return TabPFNClassifier(
+            device=DEVICE, N_ensemble_configurations=self.n_ensemble_configurations
+        )
+
+    def _subsample(self, X, y, stratify=None):
+        _x, _y = self._sampler.sample(X, y, stratify=stratify)
+        assert len(_x) <= _TABPFN_MAX_INP_SIZE
+        assert len(_y) <= _TABPFN_MAX_INP_SIZE
         return (_x, _y)
 
-    def _generate_ensemble(self, X, y):
+    def _generate_ensemble(self, X, y, stratify=None):
+        self.ensembles_ = []
         for i in range(self._num_iters):
             data = self._subsample(X, y)
-            self._ensemble.append(data)
+            self._ensembles.append(data)
 
-    def _chunk_data(self, X, y):
-        pass
+    def _chunk_data(self, X):
+        total_data = X.shape[0]
+        num_chunks = math.ceil(total_data / self.chunk_size)
 
-    def fit(self, X, y):
-        self._is_fitted = True
+        chunks = []
+        for chunk in range(num_chunks):
+            chunks.append((chunk * self.chunk_size, (chunk + 1) * self.chunk_size))
+        return chunks
+
+    def fit(self, X, y, stratify=None):
+        X, y = check_X_y(X, y, force_all_finite=False)
+
+        if X.shape[0] < _TABPFN_MAX_INP_SIZE:
+            # If the input size is smaller than what TabPFN can
+            # work with, then generating ensembles is not required
+            return
         self._generate_ensemble(X, y)
 
-    # TODO Parametrize chunk size
-    def predict(self, X):
-        # Perform data chunking so that we don't run into any OOM issues
-        # TODO What is a good estimate for chunk size? Or should we let the user decide?
-        total_data = len(X)
-        chunk_size = 2000
-        num_chunks = math.ceil(total_data / chunk_size)
-        preds = []
-        for chunk in range(num_chunks):
-            X_chunk = X[(chunk * chunk_size) : (chunk + 1) * chunk_size]
-            for data in self._ensemble:
+    def _predict(self, X, return_prob=False):
+
+        result = []
+        chunks = self._chunk_data(X)
+        for data in self.ensembles_:
+            for start, end in chunks:
+                X_chunk = X[start:end]
                 _x, _y = data
                 self.model.fit(_x, _y)
-                preds.append(self.model.predict(X_chunk))
+                result.append(
+                    (
+                        self.model.predict(
+                            X_chunk, return_winning_probability=return_prob
+                        )
+                    )
+                )
 
-        preds = np.array(preds)
-        return np.round(np.mean(preds, axis=0))
+    @staticmethod
+    def _aggregate_preds(preds):
+        return preds
+
+    def predict(self, X):
+        check_is_fitted(self, attributes="ensembles_")
+        preds = self._predict(X)
+        preds = self._aggregate_preds(preds)
+        return preds
+
+    def predict_proba(self, X):
+        check_is_fitted(self, attributes="ensembles_")
+        y, p = self._predict(X, return_prob=True)

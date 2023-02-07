@@ -1,6 +1,10 @@
 from sklearn.utils import resample
 
 
+def get_sampler(sampler_type):
+    return {"bootstrap": BootstrapSampler}
+
+
 class BootstrapSampler:
     def __init__(self):
         pass

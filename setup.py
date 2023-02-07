@@ -5,8 +5,8 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="ensemble-tabpfn",
-    author="Dhanshree Arora",
-    author_email="dhanshree.arora@gmail.com",
+    author="Ersilia",
+    author_email="hello@ersilia.io",
     description="Ensemble TabPFN",
     keywords="automl, tabpfn, tabular",
     long_description=long_description,
