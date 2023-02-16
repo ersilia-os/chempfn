@@ -3,8 +3,8 @@ from sklearn.utils.validation import check_is_fitted, check_X_y
 import torch
 from tabpfn import TabPFNClassifier
 
-from samplers import get_sampler
-from utils import aggregate_arrays, chunker
+from .samplers import get_sampler
+from .utils import aggregate_arrays, chunker
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 _TABPFN_MAX_INP_SIZE = 1000
@@ -30,9 +30,11 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         return (_x, _y)
 
     def _generate_ensemble(self, X, y, stratify=None):
-        for i in range(self._num_iters):
+        iter = 0
+        while iter < self.max_iters:
             data = self._subsample(X, y)
             self._ensembles.append(data)
+            iter += 1
 
     def _chunk_data(self, X):
         return chunker(X, self.chunk_size)
