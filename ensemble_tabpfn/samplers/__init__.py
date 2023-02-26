@@ -1,19 +1,44 @@
+import numpy as np
 from sklearn.utils import resample
+from typing import Optional, List, Type
+
+ALL_SAMPLERS = ["bootstrap"]
 
 
-def get_data_sampler(sampler_type):
-    assert sampler_type in ["bootstrap"], "Sampler not recognized"
-    return {"bootstrap": BootstrapSampler}[sampler_type]
-
-
-class BootstrapSampler:
-    def __init__(self):
+class DataSampler:
+    def __init__(self) -> None:
         pass
 
-    def sample(self, X, y, stratify=None, n_samples: int = 1000, replace: bool = True):
-        if stratify is not None:
-            return resample(
-                X, y, n_samples=n_samples, replace=replace, stratify=stratify
-            )
-        else:
-            return resample(X, y, n_samples=n_samples, replace=replace)
+    def sample(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        stratify: Optional[np.ndarray] = None,
+        n_samples: int = 1000,
+    ) -> List[np.ndarray]:
+        raise NotImplementedError
+
+
+class BootstrapSampler(DataSampler):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def sample(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        stratify: Optional[np.ndarray] = None,
+        n_samples: int = 1000,
+        replace: bool = True
+    ) -> List[np.ndarray]:
+        return resample(
+            X, y, n_samples=n_samples, replace=replace, stratify=stratify
+        )
+
+
+def get_data_sampler(sampler_type: str) -> Type[DataSampler]:
+    if sampler_type not in ALL_SAMPLERS:
+        raise ValueError(
+            f"Invalid data sampler provided. Must be one of {ALL_SAMPLERS}"
+        )
+    return {"bootstrap": BootstrapSampler}[sampler_type]
