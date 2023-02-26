@@ -20,6 +20,8 @@ class DataSampler:
 
 
 class BootstrapSampler(DataSampler):
+    """Perform bootstrap sampling on data with replacement and no stratification.
+    """
     def __init__(self) -> None:
         super().__init__()
 
