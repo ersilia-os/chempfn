@@ -2,7 +2,8 @@ from enum import IntEnum
 import numpy as np
 import math
 
-#TODO (@dhanshree) Update documentation
+# TODO (@dhanshree) Update documentation
+
 
 class ShapeCount(IntEnum):
     ONE = 1
@@ -36,7 +37,7 @@ def chunker(X, chunk_size):
     return chunks
 
 
-#TODO(@dhanshree) Maybe we can replace this with some decorators
+# TODO(@dhanshree) Maybe we can replace this with some decorators
 def aggregate_arrays(X):
     """_summary_
 
@@ -79,8 +80,10 @@ def aggregate_arrays(X):
             return np.round(np.mean(X, axis=0, dtype=np.float64).reshape(samples))
 
         if samples != ShapeCount.UNDEF:
-            return np.round(np.mean(X, axis=0, dtype=np.float64).reshape(chunks*samples))
-        
-        #TODO (@dhanshree) Flatten array before gettinga average
+            return np.round(
+                np.mean(X, axis=0, dtype=np.float64).reshape(chunks * samples)
+            )
+
+        # TODO (@dhanshree) Flatten array before gettinga average
         # X = np.round(np.mean(X, axis=0, dtype=np.float64))
         # return np.concatenate([X[0][chunk] for chunk in range(chunks)], axis=0)

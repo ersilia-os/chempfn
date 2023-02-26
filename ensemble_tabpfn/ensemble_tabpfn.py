@@ -32,7 +32,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         assert len(_x) <= _TABPFN_MAX_INP_SIZE
         assert len(_y) <= _TABPFN_MAX_INP_SIZE
         return (_x, _y)
-    
+
     def _feat_subsample(self, X, y):
         self.feat_transformer_ = self.feature_sampler(X, y)
 
@@ -54,7 +54,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             # work with, then generating ensembles is not required
             self.ensembles_.append((X, y))
             return
-        
+
         self._generate_ensemble(X, y)
 
     def _predict(self, X, return_prob=False):
