@@ -15,7 +15,11 @@ cd ensemble-tabpfn
 pip install .
 ```
 
-## From PyPI - WIP
+## From PyPI
+
+```python
+pip install ensemble-tabpfn
+```
 
 ## Using Poetry
 
