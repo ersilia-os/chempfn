@@ -6,7 +6,7 @@ from tabpfn import TabPFNClassifier
 from typing import List, Optional
 
 from .samplers import get_data_sampler, DataSampler
-from .samplers.features import get_feature_sampler, FeatureSampler
+from .samplers import get_feature_sampler, FeatureSampler
 from .utils import Result
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -22,7 +22,13 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         feature_sampler: str = "selectk",
         n_ensemble_configurations: int = 4,
     ) -> None:
-        """_summary_
+        """Ensemble TabPFN estimator class that performs data transformations to work with TabPFN.
+
+        For training data of shape (n_samples, n_features) where n_samples exceeds 1000
+        and n_features exceeds 100, creates data sub-sample ensembles and performs 
+        dimensionality reduction or feature extraction on each sub-sample to generate
+        predictions for test data. The ensemble predictions are aggregated to return
+        predictions for the target variable.
 
         Parameters
         ----------
@@ -32,7 +38,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         data_sampler : str, optional
             Data sampler to use for subsampling data. By default, bootstrap sampling is used with replacement.
         feature_sampler : str, optional
-            Feature subsampler to use. By default, top 100 features are selected using chi2 scoring.
+            Feature subsampler to use. One of {"pca", "lrp", "selectk", "cluster", "random"}, default: selectk. By default, selectk with chi2 scoring is used.
         n_ensemble_configurations : int, optional
             Ensemble configuration in TabPFN classifier, by default 4. A highe value will slow down prediction.
         """
@@ -46,23 +52,38 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         self.max_iters: int = max_iters
         self.n_ensemble_configurations: int = n_ensemble_configurations
 
-    def _data_subsample(self, X: np.ndarray, y: np.ndarray, stratify=None):
+    def _data_subsample(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        stratify: Optional[np.ndarray] = None,
+    ):
         _x, _y = self.data_sampler.sample(X, y, stratify=stratify)
         assert len(_x) <= _TABPFN_MAX_INP_SIZE
         assert len(_y) <= _TABPFN_MAX_INP_SIZE
         return (_x, _y)
 
-    def _feat_subsample(self, X: np.ndarray, y: np.ndarray) -> np.ndarray:
-        X_new = self.feature_sampler.sample(X, y)
-        return X_new
+    def _feat_subsample(
+        self,
+        X: np.ndarray,
+        y: Optional[np.ndarray] = None,
+        transform: bool = False,
+    ) -> np.ndarray:
+        if transform:
+            return self.feature_sampler.reduce(X)
+        return self.feature_sampler.sample(X, y)  # type: ignore
 
-    def _generate_ensemble(self, X: np.ndarray, y: np.ndarray, stratify=None):
+    def _generate_ensemble(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        stratify: Optional[np.ndarray] = None,
+    ):
         iter = 0
         while iter < self.max_iters:
-            data = self._subsample(X, y)
+            data = self._data_subsample(X, y, stratify=stratify)
             self.ensembles_.append(data)
             iter += 1
-
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Generate ensembles to use during prediction
@@ -94,13 +115,17 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         result = Result()
         sample_features = True if X.shape[1] > _TABPFN_MAX_FEAT else False
 
+        # For each data ensembles, sample features if needed
+        # Fit TabPFN on ensemble of samples from the training data
+        # Generate results for the test data.
         for data in self.ensembles_:
             _x, _y = data
             if sample_features:
-                _x = self._feat_subsample(_x, _y)
-            model.fit(_x, _y)
+                _x_new = self._feat_subsample(_x, _y)
+            model.fit(_x_new, _y)
+            X_new = self._feat_subsample(X, transform=True)
             pred, prob = model.predict(
-                X, return_winning_probability=return_prob
+                X_new, return_winning_probability=return_prob
             )
             result.raw_preds.append(pred)
             result.raw_probs.append(prob)
