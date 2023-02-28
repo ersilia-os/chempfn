@@ -19,18 +19,11 @@ setuptools.setup(
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
     classifiers=[
-        # see https://pypi.org/classifiers/
-        # 'Development Status :: 5 - Production/Stable',
-        # 'Intended Audience :: Developers',
-        # 'Topic :: Software Development :: Build Tools',
-        # 'Programming Language :: Python :: 3',
-        # 'Programming Language :: Python :: 3.6',
-        # 'Programming Language :: Python :: 3.7',
-        # 'Programming Language :: Python :: 3.8',
-        # 'Programming Language :: Python :: 3.9',
-        # 'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3 :: Only',
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     install_requires=[""],
     extras_require={
         # 'dev': ['check-manifest'],
