@@ -7,11 +7,9 @@ from typing import List, Optional
 
 from .samplers import get_data_sampler, DataSampler
 from .samplers import get_feature_sampler, FeatureSampler
-from .utils import Result
+from .utils import Result, TabPFNConstants
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-_TABPFN_MAX_INP_SIZE = 1000
-_TABPFN_MAX_FEAT = 100
 
 
 class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
@@ -19,13 +17,15 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         self,
         max_iters: int = 100,
         data_sampler: str = "bootstrap",
+        n_samples: int = TabPFNConstants.MAX_INP_SIZE,
+        n_features: int = TabPFNConstants.MAX_INP_SIZE,
         feature_sampler: str = "selectk",
         n_ensemble_configurations: int = 4,
     ) -> None:
         """Ensemble TabPFN estimator class that performs data transformations to work with TabPFN.
 
         For training data of shape (n_samples, n_features) where n_samples exceeds 1000
-        and n_features exceeds 100, creates data sub-sample ensembles and performs 
+        and n_features exceeds 100, creates data sub-sample ensembles and performs
         dimensionality reduction or feature extraction on each sub-sample to generate
         predictions for test data. The ensemble predictions are aggregated to return
         predictions for the target variable.
@@ -37,6 +37,10 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             The higher the number of subsampling iterations, the slower the prection time will be.
         data_sampler : str, optional
             Data sampler to use for subsampling data. By default, bootstrap sampling is used with replacement.
+        n_samples: int, optional
+            Number of data samples to inlcude per ensemble, by default 1000. It should always be less than or equal to 1000.
+        n_features: int, optional
+            Number of features to include per ensemble, by default 100. It should always be less than or equal to 100.
         feature_sampler : str, optional
             Feature subsampler to use. One of {"pca", "lrp", "selectk", "cluster", "random"}, default: selectk. By default, selectk with chi2 scoring is used.
         n_ensemble_configurations : int, optional
@@ -45,10 +49,10 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
 
         self.data_sampler: DataSampler = get_data_sampler(
             sampler_type=data_sampler
-        )()
+        )(n_samples=n_samples)
         self.feature_sampler: FeatureSampler = get_feature_sampler(
             sampler_type=feature_sampler
-        )()
+        )(n_features=n_features)
         self.max_iters: int = max_iters
         self.n_ensemble_configurations: int = n_ensemble_configurations
 

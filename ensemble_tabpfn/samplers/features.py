@@ -1,3 +1,5 @@
+from typing import Optional, Type, List
+
 import numpy as np
 from lol import LOL
 from sklearn.base import BaseEstimator
@@ -6,10 +8,10 @@ from sklearn.exceptions import NotFittedError
 from sklearn.decomposition import PCA
 from sklearn.cluster import FeatureAgglomeration
 from sklearn.feature_selection import SelectKBest, chi2
-from typing import Optional, Type, List
+
+from ..utils import TabPFNConstants
 
 ALL_SAMPLERS = ["pca", "lrp", "selectk", "cluster", "random"]
-N_FEATURES = 100
 
 
 class FeatureSampler:
@@ -19,15 +21,22 @@ class FeatureSampler:
     must implement this and set sampler attribute appropriately.
     """
 
-    def __init__(self, fit_with_y: bool = False) -> None:
+    def __init__(
+        self,
+        n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
+        fit_with_y: bool = False,
+    ) -> None:
         """Constructor for FeatureSampler interface.
 
         Parameters
         ----------
+        n_features : int, optional
+            Number of features to sample from the feature space, by default TabPFNConstants.MAX_FEAT_SIZE
         fit_with_y : bool, optional
             Some feature extraction or selection methods require the target variable y to be present. Set true for fitting with y, by default False.
         """
-        self.fit_with_y = fit_with_y
+        self.n_features: int = n_features
+        self.fit_with_y: bool = fit_with_y
         self.sampler: BaseEstimator
 
     def _validate_sampler(self) -> None:
@@ -48,7 +57,7 @@ class FeatureSampler:
         Returns
         -------
         np.ndarray
-           The transformed data of shape (n_samples, N_FEATURES)
+           The transformed data of shape (n_samples, n_features)
         """
         self._validate_sampler()
 
@@ -71,47 +80,59 @@ class FeatureSampler:
 class SelectKSampler(FeatureSampler):
     """Select K Best according to chi2 scores."""
 
-    def __init__(self) -> None:
-        super().__init__(fit_with_y=True)
-        self.sampler = SelectKBest(chi2, k=N_FEATURES)
+    def __init__(
+        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+    ) -> None:
+        super().__init__(n_features, fit_with_y=True)
+        self.sampler = SelectKBest(chi2, k=self.n_features)
 
 
 class ClusterSampler(FeatureSampler):
     """Performs heirarchical clustering to agglomerate similar features."""
 
-    def __init__(self) -> None:
-        super().__init__()
-        self.sampler = FeatureAgglomeration(n_clusters=N_FEATURES)
+    def __init__(
+        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+    ) -> None:
+        super().__init__(n_features)
+        self.sampler = FeatureAgglomeration(n_clusters=self.n_features)
 
 
 class LRPSampler(FeatureSampler):
     """Low Rank Project sampling to reduce dimensionality in feature space."""
 
-    def __init__(self) -> None:
-        super().__init__(fit_with_y=True)
-        self.sampler = LOL(n_components=N_FEATURES)
+    def __init__(
+        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+    ) -> None:
+        super().__init__(n_features, fit_with_y=True)
+        self.sampler = LOL(n_components=self.n_features)
 
 
 class PCASampler(FeatureSampler):
     """PCA Sampling to reduce dimensionality in feature space."""
 
-    def __init__(self) -> None:
-        super().__init__()
-        self.sampler = PCA(n_components=N_FEATURES)
+    def __init__(
+        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+    ) -> None:
+        super().__init__(n_features)
+        self.sampler = PCA(n_components=self.n_features)
 
 
 class RandomSampler(FeatureSampler):
-    """Randomly selects N_FEATURES from the feature space."""
+    """Randomly selects self.n_features from the feature space."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+    ) -> None:
+        super().__init__(n_features)
         self.is_fit: bool = False
         self.indices: List[int] = []
         self.sampler = "RandomSampler"
 
     def sample(self, X: np.ndarray, y: np.ndarray) -> np.ndarray:
         if not self.is_fit:
-            self.indices = np.random.choice(X.shape[1], N_FEATURES).tolist()
+            self.indices = np.random.choice(
+                X.shape[1], self.n_features
+            ).tolist()
             self.is_fit = True
         return X[:, self.indices]
 
