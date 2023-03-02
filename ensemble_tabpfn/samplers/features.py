@@ -14,7 +14,7 @@ from ..utils import TabPFNConstants
 ALL_SAMPLERS = ["pca", "lrp", "selectk", "cluster", "random"]
 
 
-class FeatureSampler:
+class BaseSampler:
     """Interface for all feature samplers.
 
     A sampler is a scikit learn BaseEstimator type. All feature sub samplers
@@ -26,7 +26,7 @@ class FeatureSampler:
         n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
         fit_with_y: bool = False,
     ) -> None:
-        """Constructor for FeatureSampler interface.
+        """Constructor for BaseSampler interface.
 
         Parameters
         ----------
@@ -44,12 +44,12 @@ class FeatureSampler:
             raise NotImplementedError
 
     def sample(self, X: np.ndarray, y: np.ndarray) -> np.ndarray:
-        """Transform the dataset to maximum number of features by sampling.
+        """Samples the training dataset to maximum number of features by sampling.
 
         Parameters
         ----------
         X : np.ndarray
-           The input data to be transformed, of shape (n_samples, n_features)
+           The input data to be transformed, of shape (n_samples, m_features)
         y : np.ndarray
             The target variable corresponding to X, of shape (n_samples,)
         transform: bool, optional
@@ -67,6 +67,23 @@ class FeatureSampler:
             return self.sampler.fit_transform(X)
 
     def reduce(self, X: np.ndarray) -> np.ndarray:
+        """Transforms the test dataset to maximum number of features by sampling
+
+        Parameters
+        ----------
+        X : np.ndarray
+            The input data to be transformed, of shape (n_samples, m_features)
+
+        Returns
+        -------
+        np.ndarray
+            The transformed data of shape (n_samples, n_features)
+
+        Raises
+        ------
+        ValueError
+            When reduce is called without first calling sample to fit the sampler on a training set.
+        """
         self._validate_sampler()
         try:
             check_is_fitted(self.sampler)
@@ -77,7 +94,7 @@ class FeatureSampler:
             )
 
 
-class SelectKSampler(FeatureSampler):
+class SelectKSampler(BaseSampler):
     """Select K Best according to chi2 scores."""
 
     def __init__(
@@ -87,7 +104,7 @@ class SelectKSampler(FeatureSampler):
         self.sampler = SelectKBest(chi2, k=self.n_features)
 
 
-class ClusterSampler(FeatureSampler):
+class ClusterSampler(BaseSampler):
     """Performs heirarchical clustering to agglomerate similar features."""
 
     def __init__(
@@ -97,7 +114,7 @@ class ClusterSampler(FeatureSampler):
         self.sampler = FeatureAgglomeration(n_clusters=self.n_features)
 
 
-class LRPSampler(FeatureSampler):
+class LRPSampler(BaseSampler):
     """Low Rank Project sampling to reduce dimensionality in feature space."""
 
     def __init__(
@@ -107,7 +124,7 @@ class LRPSampler(FeatureSampler):
         self.sampler = LOL(n_components=self.n_features)
 
 
-class PCASampler(FeatureSampler):
+class PCASampler(BaseSampler):
     """PCA Sampling to reduce dimensionality in feature space."""
 
     def __init__(
@@ -117,7 +134,7 @@ class PCASampler(FeatureSampler):
         self.sampler = PCA(n_components=self.n_features)
 
 
-class RandomSampler(FeatureSampler):
+class RandomSampler(BaseSampler):
     """Randomly selects self.n_features from the feature space."""
 
     def __init__(
@@ -146,17 +163,64 @@ class RandomSampler(FeatureSampler):
 
 sampler_map = {
     "pca": PCASampler,
-    "selectk": LRPSampler,
-    "lrp": SelectKSampler,
+    "selectk": SelectKSampler,
+    "lrp": LRPSampler,
     "cluster": ClusterSampler,
     "random": RandomSampler,
 }
 
 
-def get_feature_sampler(sampler_type: str) -> Type[FeatureSampler]:
-    if sampler_type not in ALL_SAMPLERS:
-        raise ValueError(
-            f"Invalid feature sampler provided. Must be one of {ALL_SAMPLERS}"
-        )
-    feat_sampler = sampler_map[sampler_type]
-    return feat_sampler
+class FeatureSampler:
+    """Generates ensembles of sub sampled features using various samplers."""
+
+    def __init__(
+        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+    ) -> None:
+        self.samplers = [
+            sampler(n_features) for sampler in sampler_map.values()
+        ]
+
+    def sample(self, X: np.ndarray, y: np.ndarray) -> List[np.ndarray]:
+        """Samples features from the training dataset.
+
+        Create ensembles of sampled features from the training dataset using 
+        PCASampler, SelectKSampler LRPSampler, ClusterSampler, and RandomSampler.
+
+        Parameters
+        ----------
+        X : np.ndarray
+           The input data to be transformed, of shape (n_samples, m_features)
+        y : np.ndarray
+            The target variable corresponding to X, of shape (n_samples,)
+        transform: bool, optional
+            Transform the data on a sampler that has already been fit. By default it is False when a sampler is being fit on an ensemble's data. Set this to true when reducing features in the test data during prediction.
+        Returns
+        -------
+        List[np.ndarray]
+           List of the transformed data of shape (n_samples, n_features)
+        """
+        samples = []
+        for sampler in self.samplers:
+            samples.append(sampler.sample(X, y))
+
+        return samples
+
+    def reduce(self, X: np.ndarray) -> List[np.ndarray]:
+        """Transforms test dataset as per the feature ensembles generated from training data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            The input data to be transformed, of shape (n_samples, m_features)
+
+        Returns
+        -------
+        List[np.ndarray]
+            List of the transformed data of shape (n_samples, n_features)
+        """
+        transforms = []
+
+        for sampler in self.samplers:
+            transforms.append(sampler.reduce(X))
+
+        return transforms
