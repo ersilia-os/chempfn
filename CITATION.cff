@@ -8,6 +8,6 @@ authors:
   orcid: "https://orcid.org/0000-0002-9906-6936"
 title: "Scalable TabPFN with ensemble learning for classification tasks"
 version: 0.1.1
-doi: 
+doi: 10.5281/zenodo.7690900
 date-released: 2023-03-01
 url: "https://github.com/ersilia-os/ensemble-tabpfn"
