@@ -47,6 +47,18 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             Ensemble configuration in TabPFN classifier, by default 4. A highe value will slow down prediction.
         """
 
+        if not (n_samples <= TabPFNConstants.MAX_INP_SIZE):
+            raise ValueError(
+                f"n_samples must be less than or equal to {TabPFNConstants.MAX_INP_SIZE}"
+            )
+
+        if not (n_features <= TabPFNConstants.MAX_FEAT_SIZE):
+            raise ValueError(
+                f"n_features must be less than or equal to {TabPFNConstants.MAX_FEAT_SIZE}"
+            )
+        
+        self.n_samples = n_samples
+        self.n_features = n_features
         self.data_sampler: DataSampler = get_data_sampler(
             sampler_type=data_sampler
         )(n_samples=n_samples)
@@ -63,8 +75,6 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         stratify: Optional[np.ndarray] = None,
     ):
         _x, _y = self.data_sampler.sample(X, y, stratify=stratify)
-        assert len(_x) <= _TABPFN_MAX_INP_SIZE
-        assert len(_y) <= _TABPFN_MAX_INP_SIZE
         return (_x, _y)
 
     def _feat_subsample(
@@ -101,7 +111,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         """
         X, y = check_X_y(X, y, force_all_finite=False)
         self.ensembles_ = []
-        if X.shape[0] < _TABPFN_MAX_INP_SIZE:
+        if X.shape[0] < self.n_samples:
             # If the input size is smaller than what TabPFN can
             # work with, then generating ensembles is not required
             self.ensembles_.append((X, y))
@@ -117,7 +127,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
 
         check_is_fitted(self, attributes="ensembles_")
         result = Result()
-        sample_features = True if X.shape[1] > _TABPFN_MAX_FEAT else False
+        sample_features = True if X.shape[1] > self.n_features else False
 
         # For each data ensembles, sample features if needed
         # Fit TabPFN on ensemble of samples from the training data
