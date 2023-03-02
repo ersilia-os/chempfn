@@ -28,3 +28,11 @@ class Result:
         else:
             self.probs = np.round(np.mean(P, axis=0, dtype=np.float64))
             self.preds = np.round(np.mean(Y, axis=0, dtype=np.float64))
+
+
+class TabPFNConstants(IntEnum):
+    """Constants tracking TabPFN's limitations.
+
+    """
+    MAX_INP_SIZE: int = 1000
+    MAX_FEAT_SIZE: int = 100
