@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Arora"
+  given-names: "Dhanshree"
+- family-names: "Duran-Frigola"
+  given-names: "Miquel"
+  orcid: "https://orcid.org/0000-0002-9906-6936"
+title: "Scalable TabPFN with ensemble learning for classification tasks"
+version: 0.1.1
+doi: 
+date-released: 2023-03-01
+url: "https://github.com/ersilia-os/ensemble-tabpfn"
