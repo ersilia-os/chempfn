@@ -40,4 +40,4 @@ If you use this package, please cite the [origianl authors](https://arxiv.org/ab
 
 ## License
 
-This package is licensed under a GPL-3.0 license
+This package is licensed under a GPL-3.0 license.
