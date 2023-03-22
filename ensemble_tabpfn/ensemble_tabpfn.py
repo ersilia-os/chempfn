@@ -219,5 +219,5 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             The probability estimates for X by aggregating results across ensembles.
         """
         result = self._predict(X)
-        result.aggregate
+        result.aggregate()
         return result.probs
