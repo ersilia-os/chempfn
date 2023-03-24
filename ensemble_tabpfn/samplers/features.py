@@ -7,7 +7,7 @@ from sklearn.utils.validation import check_is_fitted
 from sklearn.exceptions import NotFittedError
 from sklearn.decomposition import PCA
 from sklearn.cluster import FeatureAgglomeration
-from sklearn.feature_selection import SelectKBest, chi2
+from sklearn.feature_selection import SelectKBest, f_classif
 
 from ..utils import TabPFNConstants
 
@@ -101,7 +101,7 @@ class SelectKSampler(BaseSampler):
         self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
     ) -> None:
         super().__init__(n_features, fit_with_y=True)
-        self.sampler = SelectKBest(chi2, k=self.n_features)
+        self.sampler = SelectKBest(f_classif, k=self.n_features)
 
 
 class ClusterSampler(BaseSampler):
