@@ -19,7 +19,6 @@ class Result:
         Y = np.array(self.raw_preds)
         P = np.array(self.raw_probs)
 
-        print(Y.shape, P.shape)
         ensembles, samples = Y.shape
 
         if ensembles == 1:

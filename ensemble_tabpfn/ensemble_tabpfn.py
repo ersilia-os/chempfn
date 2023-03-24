@@ -18,7 +18,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         max_iters: int = 100,
         data_sampler: str = "bootstrap",
         n_samples: int = TabPFNConstants.MAX_INP_SIZE,
-        n_features: int = TabPFNConstants.MAX_INP_SIZE,
+        n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
         n_ensemble_configurations: int = 4,
     ) -> None:
         """Ensemble TabPFN estimator class that performs data transformations to work with TabPFN.
@@ -46,12 +46,12 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
 
         if not (n_samples <= TabPFNConstants.MAX_INP_SIZE):
             raise ValueError(
-                f"n_samples must be less than or equal to {TabPFNConstants.MAX_INP_SIZE}"
+                f"n_samples must be less than or equal to {TabPFNConstants.MAX_INP_SIZE}, got {n_samples}"
             )
 
         if not (n_features <= TabPFNConstants.MAX_FEAT_SIZE):
             raise ValueError(
-                f"n_features must be less than or equal to {TabPFNConstants.MAX_FEAT_SIZE}"
+                f"n_features must be less than or equal to {TabPFNConstants.MAX_FEAT_SIZE}, got {n_features}"
             )
 
         self.n_samples = n_samples
