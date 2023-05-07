@@ -77,6 +77,7 @@ def filter_molecules(mols):
 
 
 cols = st.columns(3)
+
 mols_act = (
     cols[0]
     .text_area("Active molecules", height=TEXT_AREA_HEIGHT)
