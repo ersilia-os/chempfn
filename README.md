@@ -1,10 +1,12 @@
 # Ensemble TabPFN
 
-TabPFN is a transformer architecture prosposed by [Hollman et al](https://github.com/automl/TabPFN) for classification on small tabular datasets. It is a Prior-Data Fitted Network that has been trained once and does not require fine tuning for new datasets. It works by approximating the distribution of new data to the prior synthetic data it has seen during training. In a machine learning pipeline, this network can be "fit" on a training dataset in under a second and can generate predictions for the test set in a single forward pass in the network. However there are limitations in the current architecture, namely, the training dataset can contain only upto 1000 inputs with upto 100 numerical features. In addition, the network can predict only upto 10 classes in a multi-class classification problem. With EnsembleTabPFN, we address two of these issues where we have extended the original model to work with datasets containing more than 1000 samples and 100 features, using data and feature subsampling strategies.
-EnsembleTabPFN is fully compatible with Scikit-learn API and can be used in a modelling pipeline.
+**TabPFN** is a transformer architecture proposed by [Hollman et al.](https://arxiv.org/abs/2207.01848) for classification on small tabular datasets. It is a Prior-Data Fitted Network (PFN) that has been trained once and does not require fine tuning for new datasets.
 
+TabPFN works by approximating the distribution of new data to the prior synthetic data it has seen during training. In a machine learning pipeline, this network can be "fit" on a training dataset in under a second and can generate predictions for the test set in a single forward pass in the network.
 
-## Installation
+With **EnsembleTabPFN**, we address some of the limitations of the original TabPFN model. It has been extended to work with datasets containing more than 1000 rows and 100 features, using data and feature subsampling strategies. EnsembleTabPFN is fully compatible with the [Scikit-learn API](https://scikit-learn.org/stable/index.html) and can be used in a modeling pipeline like any Scikit-learn estimator.
+
+EnsembleTabPFN, as the name suggests, when fit creates ensembles of data points and input dimenions (if required), given an arbitrary sized dataset. During the predict stage, it creates an ensemble of TabPFN models fit on the training set to generate predictions for the test set. These intermediate ensemble results are then aggregated to produce the final prediction. With this approach, the model is able to fit in under a second, however predictions can be slow based on configuration ([see below](https://github.com/ersilia-os/ensemble-tabpfn/blob/main/README.md#usage)), or the underlying hardware.
 
 ### From source
 
@@ -23,12 +25,14 @@ pip install ensemble-tabpfn
 
 ## Usage
 
+By default, EnsembleTabPFN generates 100 data samples of size 1000 each to work with TabPFN. This can be configured to a lower number (for example, `max_iters=10`) to speeed up prediction. 
+
 ```python
 
 from ensemble_tabpfn import EnsembleTabPFN
 from sklearn.metrics import accuracy_score
 
-clf = EnsembleTabPFN()
+clf = EnsembleTabPFN(max_iters=100)
 clf.fit(X_train, y_train)
 y_hat = clf.predict(y_test)
 acc = accuracy_score(y_test, y_hat)
