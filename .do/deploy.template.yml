@@ -1,0 +1,8 @@
+spec:
+  name: ensemble-tabpfn
+  services:
+  - dockerfile_path: Dockerfile
+    git:
+      branch: main
+      repo_clone_url: https://github.com/ersilia-os/ensemble-tabpfn.git
+    name: ensemble-tabpfn
