@@ -19,7 +19,7 @@ st.set_page_config(
 
 @st.cache_data
 def load_example():
-    example_file = os.path.join(ROOT, "examples_carcinogen_tdc.csv")
+    example_file = os.path.join(ROOT, "example_osm.csv")
     return pd.read_csv(example_file)
 
 
@@ -104,9 +104,9 @@ if len(mols_act) == 0 or len(mols_inact) == 0 or len(mols_query) == 0:
         "Please input molecules in the text boxes above. Use SMILES strings. Below is an example from a Therapeutic Data Commons (carcinogens dataset). Copy-paste the molecule lists to try it out!"
     )
     cols = st.columns(3)
-    cols[0].text("\n".join(dex[dex["act"] == 1].head(10)["smiles"]))
-    cols[1].text("\n".join(dex[dex["act"] == -1].head(10)["smiles"]))
-    cols[2].text("\n".join(dex[dex["act"] == 0].head(10)["smiles"]))
+    cols[0].text("\n".join(dex[dex["act"] == 1].head(10000)["smiles"]))
+    cols[1].text("\n".join(dex[dex["act"] == -1].head(10000)["smiles"]))
+    cols[2].text("\n".join(dex[dex["act"] == 0].head(10000)["smiles"]))
 
 
 else:
