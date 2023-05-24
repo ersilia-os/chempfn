@@ -25,7 +25,7 @@ class Result:
             self.probs = P.reshape(samples)
             self.preds = Y.reshape(samples)
         else:
-            self.probs = np.round(np.mean(P, axis=0, dtype=np.float64))
+            self.probs = np.round(np.mean(P, axis=0, dtype=np.float64), 3)
             self.preds = np.round(np.mean(Y, axis=0, dtype=np.float64))
 
 
