@@ -114,23 +114,19 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
 
         self._generate_ensemble(X, y)
 
-    def _predict_with_data_ensembles(
-        self, X: np.ndarray, model: TabPFNClassifier, return_prob: bool = True
-    ) -> Result:
+    def _predict_with_data_ensembles(self, X: np.ndarray, model: TabPFNClassifier) -> Result:
         result = Result()
         for data in self.ensembles_:
             _x, _y = data
             model.fit(_x, _y)
-            pred, prob = model.predict(
-                X, return_winning_probability=return_prob
-            )
+            p = model.predict_proba(X)
+            pred = np.argmax(p, axis=-1)
+            proba1 = p[:,1]
             result.raw_preds.append(pred)
-            result.raw_probs.append(prob)
+            result.raw_probs.append(proba1)
         return result
 
-    def _predict_with_data_and_feature_ensembles(
-        self, X: np.ndarray, model: TabPFNClassifier, return_prob: bool = True
-    ) -> Result:
+    def _predict_with_data_and_feature_ensembles(self, X: np.ndarray, model: TabPFNClassifier) -> Result:
         result = Result()
         for data in self.ensembles_:
             _x, _y = data
@@ -141,11 +137,11 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
                 train_x_sampled_features, test_x_sampled_features
             ):
                 model.fit(train_new, _y)
-                pred, prob = model.predict(
-                    test_new, return_winning_probability=return_prob
-                )
+                p = model.predict_proba(test_new)
+                pred = np.argmax(p, axis=-1)
+                proba1 = p[:,1]
                 feature_result.raw_preds.append(pred)
-                feature_result.raw_probs.append(prob)
+                feature_result.raw_probs.append(proba1)
             feature_result.aggregate()
             result.raw_preds.append(feature_result.preds)
             result.raw_probs.append(feature_result.probs)
