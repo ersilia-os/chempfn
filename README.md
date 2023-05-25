@@ -1,5 +1,11 @@
 # Ensemble TabPFN
 
+### Updates
+
+:rocket: Check out the [Ensemble-TabPFN app](https://ensemble-tabpfn-app-r3lv9.ondigitalocean.app/) for molecular property prediction, built with :heart: using [Streamlit](https://streamlit.io/) and hosted with [Digital Ocean](https://www.digitalocean.com/).
+
+### Introduction
+
 **TabPFN** is a transformer architecture proposed by [Hollman et al.](https://arxiv.org/abs/2207.01848) for classification on small tabular datasets. It is a Prior-Data Fitted Network (PFN) that has been trained once and does not require fine tuning for new datasets.
 
 TabPFN works by approximating the distribution of new data to the prior synthetic data it has seen during training. In a machine learning pipeline, this network can be "fit" on a training dataset in under a second and can generate predictions for the test set in a single forward pass in the network.
