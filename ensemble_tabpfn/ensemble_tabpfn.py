@@ -106,6 +106,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         """
         X, y = check_X_y(X, y, force_all_finite=False)
         self.ensembles_ = []
+        self.classes_ = np.unique(y)
         if X.shape[0] < self.n_samples:
             # If the input size is smaller than what TabPFN can
             # work with, then generating ensembles is not required
@@ -119,11 +120,10 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         for data in self.ensembles_:
             _x, _y = data
             model.fit(_x, _y)
-            p = model.predict_proba(X)
-            pred = np.argmax(p, axis=-1)
-            proba1 = p[:,1]
+            prob = model.predict_proba(X)
+            pred = self.classes_[np.argmax(prob, axis=-1)]
             result.raw_preds.append(pred)
-            result.raw_probs.append(proba1)
+            result.raw_probs.append(prob)
         return result
 
     def _predict_with_data_and_feature_ensembles(self, X: np.ndarray, model: TabPFNClassifier) -> Result:
@@ -137,11 +137,10 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
                 train_x_sampled_features, test_x_sampled_features
             ):
                 model.fit(train_new, _y)
-                p = model.predict_proba(test_new)
-                pred = np.argmax(p, axis=-1)
-                proba1 = p[:,1]
+                prob = model.predict_proba(X)
+                pred = self.classes_[np.argmax(prob, axis=-1)]
                 feature_result.raw_preds.append(pred)
-                feature_result.raw_probs.append(proba1)
+                feature_result.raw_probs.append(prob)
             feature_result.aggregate()
             result.raw_preds.append(feature_result.preds)
             result.raw_probs.append(feature_result.probs)
