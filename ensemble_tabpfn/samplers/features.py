@@ -224,3 +224,6 @@ class FeatureSampler:
             transforms.append(sampler.reduce(X))
 
         return transforms
+    
+    def get_samplers(self) -> List[BaseSampler]:
+        return self.samplers
