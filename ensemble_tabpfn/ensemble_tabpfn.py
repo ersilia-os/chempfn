@@ -85,8 +85,9 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         self,
         X: np.ndarray,
         y: np.ndarray,
+        random_state: Optional[int] = None,
     ):
-        _x, _y, indices = self.data_sampler.sample(X, y)
+        _x, _y, indices = self.data_sampler.sample(X, y, random_state=random_state)
         return (_x, _y, indices)
 
     def _feat_subsample(
@@ -104,12 +105,9 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         X: np.ndarray,
         y: np.ndarray,
     ):
-
         # Implement early stopping
         for _iter in range(self.max_iters):
-            _x, _y, indices = self._data_subsample(
-                X, y, random_state=self.random_state
-            )
+            _x, _y, indices = self._data_subsample(X, y, random_state=self.random_state)
             self._feat_subsample(_x, _y)
             ensemble = Ensemble(
                 data_indices=indices, feat_samplers=self.feature_sampler.get_samplers()
@@ -147,20 +145,20 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         check_is_fitted(self, attributes="ensembles_")
 
         def compare_preds(row):
-            if row['prev_pred'] == row['curr_pred']:
-                row['no_change_count'] += 1
-            elif abs(row['prev_pred'] - row['curr_pred']) < self.tolerance:
-                row['no_change_count'] += 1
+            if row["prev_pred"] == row["curr_pred"]:
+                row["no_change_count"] += 1
+            elif abs(row["prev_pred"] - row["curr_pred"]) < self.tolerance:
+                row["no_change_count"] += 1
             else:
-                row['prev_pred'] = row['curr_pred']
+                row["prev_pred"] = row["curr_pred"]
             return row
 
         result = Result()
         test_data = pd.DataFrame(X)
-        test_data['prev_pred'] = 0.0
-        test_data['curr_pred'] = 0.0
-        test_data['freeze'] = False
-        test_data['no_change_count'] = 0
+        test_data["prev_pred"] = 0.0
+        test_data["curr_pred"] = 0.0
+        test_data["freeze"] = False
+        test_data["no_change_count"] = 0
 
         remaining_X = test_data.iloc[:, X.shape[-1]].to_numpy()
         for itr in self.max_iters:
@@ -173,11 +171,17 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             ):
                 model.fit(train_new, _y)
                 p = model.predict_proba(test_new)
-                test_data.iloc[remaining_X.index]['curr_pred'] = p
+                test_data.iloc[remaining_X.index]["curr_pred"] = p
                 test_data = test_data.apply(compare_preds, axis=1)
-                test_data.loc[test_data['no_change_count'] >= self.early_stopping_rounds, 'freeze'] = True
-                remaining_X = test_data.loc[test_data['freeze'] == False, :].iloc[:, X.shape[-1]].to_numpy()
-                preds = test_data['curr_pred'].to_numpy()
+                test_data.loc[
+                    test_data["no_change_count"] >= self.early_stopping_rounds, "freeze"
+                ] = True
+                remaining_X = (
+                    test_data.loc[test_data["freeze"] == False, :]
+                    .iloc[:, X.shape[-1]]
+                    .to_numpy()
+                )
+                preds = test_data["curr_pred"].to_numpy()
                 result.raw_preds.append(preds)
 
         return result
