@@ -13,7 +13,6 @@ class Ensemble:
         self.data_indices = data_indices
         self.feat_samplers = feat_samplers
 
-    
 
 class Result:
     """Stores the result from EnsembleTabPFN predictions"""

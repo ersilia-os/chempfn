@@ -7,10 +7,12 @@ import torch
 from tabpfn import TabPFNClassifier
 from typing import List, Optional
 import pickle
+import pandas as pd
+
 
 from .samplers import get_data_sampler, DataSampler
 from .samplers import FeatureSampler
-from .utils import Result, TabPFNConstants, Ensemble
+from .utils import Result, TabPFNConstants, Ensemble, PredictionArrayColumnIndices
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -104,41 +106,17 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         X: np.ndarray,
         y: np.ndarray,
     ):
-        X_train, X_val, y_train, y_val = train_test_split(
-            X, y, test_size=0.2, random_state=self.random_state
-        )
-        best_loss = np.inf
-        no_improvement = 0
-
-        def evaluate(y, y_hat) -> float:
-            return accuracy_score(y_true=y, y_pred=y_hat)
 
         # Implement early stopping
-        for epoch in range(self.max_iters):
+        for _iter in range(self.max_iters):
             _x, _y, indices = self._data_subsample(
-                X_train, y_train, random_state=self.random_state
+                X, y, random_state=self.random_state
             )
-            train_x_sampled_features = self._feat_subsample(_x, _y)
-            test_x_sampled_features = self._feat_subsample(X_val, transform=True)
-            for train_new, test_new in zip(
-                train_x_sampled_features, test_x_sampled_features
-            ):
-                self.model.fit(train_new, _y)
-                y_hat = self.model.predict(test_new)
-                loss = evaluate(y_val, y_hat)
-
-                if loss < best_loss - self.tolerance:
-                    best_loss = loss
-                    no_improvement = 0
-                    # Save an ensemble if there is improvement in validation loss
-                else:
-                    no_improvement += 1
+            self._feat_subsample(_x, _y)
             ensemble = Ensemble(
                 data_indices=indices, feat_samplers=self.feature_sampler.get_samplers()
             )
             self.ensembles_.append(ensemble)
-            if no_improvement >= self.early_stopping_rounds:
-                break
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Generate ensembles to use during prediction
@@ -169,17 +147,40 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         )
 
         check_is_fitted(self, attributes="ensembles_")
+
+        def compare_preds(row):
+            if row['prev_pred'] == row['curr_pred']:
+                row['no_change_count'] += 1
+            elif abs(row['prev_pred'] - row['curr_pred']) < self.tolerance:
+                row['no_change_count'] += 1
+            else:
+                row['prev_pred'] = row['curr_pred']
+            return row
+
         result = Result()
+        test_data = pd.DataFrame(X)
+        test_data['prev_pred'] = 0.0
+        test_data['curr_pred'] = 0.0
+        test_data['freeze'] = False
+        test_data['no_change_count'] = 0
+
+        remaining_X = test_data.iloc[:, X.shape[-1]].to_numpy()
         for itr in self.max_iters:
             _x, _y = self.ensembles_[itr].data
+            self.feature_sampler.samplers = self.ensembles_[itr].feat_samplers
             train_x_sampled_features = self._feat_subsample(_x, _y)
-            test_x_sampled_features = self._feat_subsample(X, transform=True)
+            test_x_sampled_features = self._feat_subsample(remaining_X, transform=True)
             for train_new, test_new in zip(
                 train_x_sampled_features, test_x_sampled_features
             ):
                 model.fit(train_new, _y)
                 p = model.predict_proba(test_new)
-                result.raw_preds.append(p)
+                test_data.iloc[remaining_X.index]['curr_pred'] = p
+                test_data = test_data.apply(compare_preds, axis=1)
+                test_data.loc[test_data['no_change_count'] >= self.early_stopping_rounds, 'freeze'] = True
+                remaining_X = test_data.loc[test_data['freeze'] == False, :].iloc[:, X.shape[-1]].to_numpy()
+                preds = test_data['curr_pred'].to_numpy()
+                result.raw_preds.append(preds)
 
         return result
 
