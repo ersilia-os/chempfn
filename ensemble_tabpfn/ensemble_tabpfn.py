@@ -1,8 +1,6 @@
 from sklearn.base import BaseEstimator, ClassifierMixin
 import numpy as np
 from sklearn.utils.validation import check_is_fitted, check_X_y
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 import torch
 from tabpfn import TabPFNClassifier
 from typing import List, Optional
@@ -12,7 +10,7 @@ import pandas as pd
 
 from .samplers import get_data_sampler, DataSampler
 from .samplers import FeatureSampler
-from .utils import Result, TabPFNConstants, Ensemble, PredictionArrayColumnIndices
+from .utils import Result, TabPFNConstants, Ensemble
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
