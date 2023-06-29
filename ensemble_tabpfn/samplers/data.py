@@ -40,8 +40,8 @@ class BootstrapSampler(DataSampler):
     ) -> List[np.ndarray]:
         np.random.seed(random_state)
         indices = np.random.choice(
-            X,
-            n_samples=self.n_samples,
+            X.shape[0],
+            size=self.n_samples,
             replace=replace
         )
         return [X[indices], y[indices], indices]

@@ -76,10 +76,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         self.random_state: Optional[int] = random_state
         self.early_stopping_rounds: int = early_stopping_rounds
         self.tolerance: float = tolerance
-        self.model = TabPFNClassifier(
-            device=DEVICE,
-            N_ensemble_configurations=n_ensemble_configurations,
-        )
+        self.n_ensemble_configurations: int = n_ensemble_configurations
 
     def _data_subsample(
         self,
@@ -110,7 +107,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             _x, _y, indices = self._data_subsample(X, y, random_state=self.random_state)
             self._feat_subsample(_x, _y)
             ensemble = Ensemble(
-                data_indices=indices, feat_samplers=self.feature_sampler.get_samplers()
+                data=(_x, _y), data_indices=indices, feat_samplers=self.feature_sampler.get_samplers()
             )
             self.ensembles_.append(ensemble)
 
@@ -127,6 +124,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         X, y = check_X_y(X, y, force_all_finite=False)
         self.ensembles_: List[Ensemble] = []
         self._generate_ensembles(X, y)
+        self.classes_ = np.unique(y).size
 
     def save_model(self, path) -> None:
         with open(path, "wb") as f:
@@ -136,32 +134,27 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
     def load_model(path):
         return pickle.load(open(path, "rb"))
 
-    def _predict(self, X: np.ndarray, model: TabPFNClassifier) -> Result:
+    def _predict(self, X: np.ndarray) -> Result:
+
+        check_is_fitted(self, attributes="ensembles_")
+
         model = TabPFNClassifier(
             device=DEVICE,
             N_ensemble_configurations=self.n_ensemble_configurations,
         )
 
-        check_is_fitted(self, attributes="ensembles_")
+        result = Result(
+            samples=X.shape[0],
+            classes=self.classes_,
+            tolerance=self.tolerance,
+            patience=self.early_stopping_rounds,
+        )
 
-        def compare_preds(row):
-            if row["prev_pred"] == row["curr_pred"]:
-                row["no_change_count"] += 1
-            elif abs(row["prev_pred"] - row["curr_pred"]) < self.tolerance:
-                row["no_change_count"] += 1
-            else:
-                row["prev_pred"] = row["curr_pred"]
-            return row
+        # Set initial values
+        remaining_X = X.copy()
+        indices = np.arange(X.shape[0])
 
-        result = Result()
-        test_data = pd.DataFrame(X)
-        test_data["prev_pred"] = 0.0
-        test_data["curr_pred"] = 0.0
-        test_data["freeze"] = False
-        test_data["no_change_count"] = 0
-
-        remaining_X = test_data.iloc[:, X.shape[-1]].to_numpy()
-        for itr in self.max_iters:
+        for itr in range(self.max_iters):
             _x, _y = self.ensembles_[itr].data
             self.feature_sampler.samplers = self.ensembles_[itr].feat_samplers
             train_x_sampled_features = self._feat_subsample(_x, _y)
@@ -171,18 +164,12 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             ):
                 model.fit(train_new, _y)
                 p = model.predict_proba(test_new)
-                test_data.iloc[remaining_X.index]["curr_pred"] = p
-                test_data = test_data.apply(compare_preds, axis=1)
-                test_data.loc[
-                    test_data["no_change_count"] >= self.early_stopping_rounds, "freeze"
-                ] = True
-                remaining_X = (
-                    test_data.loc[test_data["freeze"] == False, :]
-                    .iloc[:, X.shape[-1]]
-                    .to_numpy()
-                )
-                preds = test_data["curr_pred"].to_numpy()
-                result.raw_preds.append(preds)
+                result.curr_mean[indices] = (p + result.prev_mean[indices]) / (
+                    result.ensembles[indices] + 1
+                )[:, None]
+                result.compare_preds()
+                indices = np.arange(X.shape[0])[result.freeze == False]
+                remaining_X = X[indices].copy()
 
         return result
 
@@ -202,7 +189,6 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             The predicted classes for X by aggregating results across ensembles.
         """
         result = self._predict(X)
-        result.aggregate()
         return result.preds
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
@@ -221,5 +207,4 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             The probability estimates for X by aggregating results across ensembles.
         """
         result = self._predict(X)
-        result.aggregate()
         return result.probs
