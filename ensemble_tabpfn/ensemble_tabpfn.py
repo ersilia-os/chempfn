@@ -164,7 +164,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             ):
                 model.fit(train_new, _y)
                 p = model.predict_proba(test_new)
-                result.curr_mean[indices] = (p + result.prev_mean[indices]) / (
+                result.curr_mean[indices] = (p[indices] + result.prev_mean[indices]) / (
                     result.ensembles[indices] + 1
                 )[:, None]
                 result.compare_preds()
