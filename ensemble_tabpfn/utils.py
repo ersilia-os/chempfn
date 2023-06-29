@@ -63,7 +63,7 @@ class Result:
     @property
     def preds(self) -> np.ndarray:
         """Returns the final predictions."""
-        return np.argmax(self.proba, axis=1)
+        return np.argmax(self.probs, axis=1)
 
 
 class TabPFNConstants(IntEnum):
