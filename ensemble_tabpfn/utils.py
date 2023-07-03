@@ -41,24 +41,22 @@ class Result:
         self.ensembles = np.ones(
             samples
         )  # Initial condition, to prevent divide by zero error
-        self.curr_mean = np.zeros((samples, classes), dtype=np.float64)
-        self.prev_mean = np.zeros((samples, classes), dtype=np.float64)
-        self._preds = np.zeros(samples, dtype=int)
+        self.prob_mean = np.zeros((samples, classes), dtype=np.float64)
 
-    def compare_preds(self) -> None:
+    def compare_preds(self, curr_mean) -> None:
         """Compares current and previous mean predictions."""
-        no_change = np.all(
-            np.abs(self.prev_mean - self.curr_mean) < self.tolerance, axis=1
+        no_change = np.any(
+            np.abs(self.prob_mean - curr_mean) < self.tolerance, axis=1
         )
         self.no_change_count += no_change
-        self.prev_mean[~no_change] = self.curr_mean[~no_change]
+        self.prob_mean[~no_change] = curr_mean[~no_change]
         self.ensembles[~no_change] += 1
         self.freeze[self.no_change_count >= self.patience] = True
 
     @property
     def probs(self) -> np.ndarray:
         """Returns the final predictions."""
-        return self.curr_mean
+        return self.prob_mean
 
     @property
     def preds(self) -> np.ndarray:

@@ -138,6 +138,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
 
         check_is_fitted(self, attributes="ensembles_")
 
+        # TODO Move to init
         model = TabPFNClassifier(
             device=DEVICE,
             N_ensemble_configurations=self.n_ensemble_configurations,
@@ -151,26 +152,34 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         )
 
         # Set initial values
-        remaining_X = X.copy()
         indices = np.arange(X.shape[0])
 
         for itr in range(self.max_iters):
+            print(f"==========Evaluating ensemble {itr}============")
             _x, _y = self.ensembles_[itr].data
             self.feature_sampler.samplers = self.ensembles_[itr].feat_samplers
             train_x_sampled_features = self._feat_subsample(_x, _y)
-            test_x_sampled_features = self._feat_subsample(remaining_X, transform=True)
+            test_x_sampled_features = self._feat_subsample(X, transform=True)
             for train_new, test_new in zip(
                 train_x_sampled_features, test_x_sampled_features
             ):
+
                 model.fit(train_new, _y)
-                p = model.predict_proba(test_new)
-                result.curr_mean[indices] = (p[indices] + result.prev_mean[indices]) / (
+                p = model.predict_proba(test_new[indices])
+
+                curr_mean = result.prob_mean.copy()
+                curr_mean[indices] = (p + result.prob_mean[indices]) / (
                     result.ensembles[indices] + 1
                 )[:, None]
-                result.compare_preds()
-                indices = np.arange(X.shape[0])[result.freeze == False]
-                remaining_X = X[indices].copy()
+                result.compare_preds(curr_mean)
 
+                indices = np.arange(X.shape[0])[result.freeze == False]
+                print(f"Remaining samples: {len(indices)}")
+
+                if len(indices) == 0:
+                    break
+            if len(indices) == 0:
+                break
         return result
 
     def predict(self, X: np.ndarray) -> np.ndarray:
