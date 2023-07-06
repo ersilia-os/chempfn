@@ -1,3 +1,5 @@
+import logging
+
 from sklearn.base import BaseEstimator, ClassifierMixin
 import numpy as np
 from sklearn.utils.validation import check_is_fitted, check_X_y
@@ -5,27 +7,31 @@ import torch
 from tabpfn import TabPFNClassifier
 from typing import List, Optional
 import pickle
-import pandas as pd
 
+from .result import Result
+from .ensemble_builder import EnsembleBuilder
 
-from .samplers import get_data_sampler, DataSampler
-from .samplers import FeatureSampler
-from .utils import Result, TabPFNConstants, Ensemble
-
+# TODO maybe add support for mps backend for Macs
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+# TODO: abstract to utils
+logger = logging.getLogger(__name__)
+c_handler = logging.StreamHandler()
+c_handler.setLevel(logging.INFO)
+c_format = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
+c_handler.setFormatter(c_format)
+logger.addHandler(c_handler)
 
 
 class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
     def __init__(
         self,
         max_iters: int = 100,
-        data_sampler: str = "bootstrap",
-        n_samples: int = TabPFNConstants.MAX_INP_SIZE,
-        n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
         random_state: Optional[int] = None,
         early_stopping_rounds: int = 5,
         tolerance: float = 1e-4,
         n_ensemble_configurations: int = 4,
+        verbose: bool = False,  # TODO: very hacky, there should be a better way to do this
     ) -> None:
         """Ensemble TabPFN estimator class that performs data transformations to work with TabPFN.
 
@@ -55,61 +61,14 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         n_ensemble_configurations : int, optional
             Ensemble configuration in TabPFN classifier, by default 4. A highe value will slow down prediction.
         """
-
-        if not (n_samples <= TabPFNConstants.MAX_INP_SIZE):
-            raise ValueError(
-                f"n_samples must be less than or equal to {TabPFNConstants.MAX_INP_SIZE}, got {n_samples}"
-            )
-
-        if not (n_features <= TabPFNConstants.MAX_FEAT_SIZE):
-            raise ValueError(
-                f"n_features must be less than or equal to {TabPFNConstants.MAX_FEAT_SIZE}, got {n_features}"
-            )
-
-        self.n_samples = n_samples
-        self.n_features = n_features
-        self.data_sampler: DataSampler = get_data_sampler(sampler_type=data_sampler)(
-            n_samples=n_samples
-        )
-        self.feature_sampler = FeatureSampler(n_features=n_features)
         self.max_iters: int = max_iters
         self.random_state: Optional[int] = random_state
         self.early_stopping_rounds: int = early_stopping_rounds
         self.tolerance: float = tolerance
         self.n_ensemble_configurations: int = n_ensemble_configurations
 
-    def _data_subsample(
-        self,
-        X: np.ndarray,
-        y: np.ndarray,
-        random_state: Optional[int] = None,
-    ):
-        _x, _y, indices = self.data_sampler.sample(X, y, random_state=random_state)
-        return (_x, _y, indices)
-
-    def _feat_subsample(
-        self,
-        X: np.ndarray,
-        y: Optional[np.ndarray] = None,
-        transform: bool = False,
-    ) -> List[np.ndarray]:
-        if transform:
-            return self.feature_sampler.reduce(X)
-        return self.feature_sampler.sample(X, y)  # type: ignore
-
-    def _generate_ensembles(
-        self,
-        X: np.ndarray,
-        y: np.ndarray,
-    ):
-        # Implement early stopping
-        for _iter in range(self.max_iters):
-            _x, _y, indices = self._data_subsample(X, y, random_state=self.random_state)
-            self._feat_subsample(_x, _y)
-            ensemble = Ensemble(
-                data=(_x, _y), data_indices=indices, feat_samplers=self.feature_sampler.get_samplers()
-            )
-            self.ensembles_.append(ensemble)
+        if verbose:
+            logger.setLevel(logging.DEBUG)
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Generate ensembles to use during prediction
@@ -122,20 +81,21 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             Target variable of shape(n_samples)
         """
         X, y = check_X_y(X, y, force_all_finite=False)
-        self.ensembles_: List[Ensemble] = []
-        self._generate_ensembles(X, y)
+        bldr = EnsembleBuilder(self.max_iters, self.random_state)
+        self.ensembles_ = bldr.build(X, y)
         self.classes_ = np.unique(y).size
 
     def save_model(self, path) -> None:
         with open(path, "wb") as f:
-            pickle.dump(self, f)
+            pickle.dump(self.ensembles_, f)
 
-    @staticmethod
-    def load_model(path):
-        return pickle.load(open(path, "rb"))
+    @classmethod
+    def load_model(cls, path):
+        model = cls()
+        model.ensembles_ = pickle.load(open(path, "rb"))
+        return model
 
     def _predict(self, X: np.ndarray) -> Result:
-
         check_is_fitted(self, attributes="ensembles_")
 
         # TODO Move to init
@@ -155,7 +115,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         indices = np.arange(X.shape[0])
 
         for itr in range(self.max_iters):
-            print(f"==========Evaluating ensemble {itr}============")
+            logger.debug(f"==========Evaluating ensemble {itr}============")
             _x, _y = self.ensembles_[itr].data
             self.feature_sampler.samplers = self.ensembles_[itr].feat_samplers
             train_x_sampled_features = self._feat_subsample(_x, _y)
@@ -163,7 +123,6 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             for train_new, test_new in zip(
                 train_x_sampled_features, test_x_sampled_features
             ):
-
                 model.fit(train_new, _y)
                 p = model.predict_proba(test_new[indices])
 
@@ -174,7 +133,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
                 result.compare_preds(curr_mean)
 
                 indices = np.arange(X.shape[0])[result.freeze == False]
-                print(f"Remaining samples: {len(indices)}")
+                logger.debug(f"Remaining samples: {len(indices)}")
 
                 if len(indices) == 0:
                     break
