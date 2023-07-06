@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.utils import resample
 from typing import Optional, List, Type
 from ..utils import TabPFNConstants
 
@@ -21,14 +20,14 @@ class DataSampler:
         self,
         X: np.ndarray,
         y: np.ndarray,
-        stratify: Optional[np.ndarray] = None,
+        random_state: Optional[int] = None,
     ) -> List[np.ndarray]:
         raise NotImplementedError
 
 
 class BootstrapSampler(DataSampler):
-    """Perform bootstrap sampling on data with replacement and no stratification.
-    """
+    """Perform bootstrap sampling on data with replacement"""
+
     def __init__(self, n_samples: int = TabPFNConstants.MAX_INP_SIZE) -> None:
         super().__init__(n_samples=n_samples)
 
@@ -36,12 +35,16 @@ class BootstrapSampler(DataSampler):
         self,
         X: np.ndarray,
         y: np.ndarray,
-        stratify: Optional[np.ndarray] = None,
-        replace: bool = True
+        replace: bool = True,
+        random_state: Optional[int] = None,
     ) -> List[np.ndarray]:
-        return resample(
-            X, y, n_samples=self.n_samples, replace=replace, stratify=stratify
+        np.random.seed(random_state)
+        indices = np.random.choice(
+            X.shape[0],
+            size=self.n_samples,
+            replace=replace
         )
+        return [X[indices], y[indices], indices]
 
 
 def get_data_sampler(sampler_type: str) -> Type[DataSampler]:

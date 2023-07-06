@@ -1,25 +1,37 @@
+import logging
+
 from sklearn.base import BaseEstimator, ClassifierMixin
 import numpy as np
 from sklearn.utils.validation import check_is_fitted, check_X_y
 import torch
 from tabpfn import TabPFNClassifier
 from typing import List, Optional
+import pickle
 
-from .samplers import get_data_sampler, DataSampler
-from .samplers import FeatureSampler
-from .utils import Result, TabPFNConstants
+from .result import Result
+from .ensemble_builder import EnsembleBuilder
 
+# TODO maybe add support for mps backend for Macs
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+# TODO: abstract to utils
+logger = logging.getLogger(__name__)
+c_handler = logging.StreamHandler()
+c_handler.setLevel(logging.INFO)
+c_format = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
+c_handler.setFormatter(c_format)
+logger.addHandler(c_handler)
 
 
 class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
     def __init__(
         self,
         max_iters: int = 100,
-        data_sampler: str = "bootstrap",
-        n_samples: int = TabPFNConstants.MAX_INP_SIZE,
-        n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
+        random_state: Optional[int] = None,
+        early_stopping_rounds: int = 5,
+        tolerance: float = 1e-4,
         n_ensemble_configurations: int = 4,
+        verbose: bool = False,  # TODO: very hacky, there should be a better way to do this
     ) -> None:
         """Ensemble TabPFN estimator class that performs data transformations to work with TabPFN.
 
@@ -40,59 +52,23 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             Number of data samples to inlcude per ensemble, by default 1000. It should always be less than or equal to 1000.
         n_features: int, optional
             Number of features to include per ensemble, by default 100. It should always be less than or equal to 100.
+        random_state : int, optional
+            Random state to use for reproducibility in data and feature subsampling, by default None.
+        early_stopping_rounds : int, optional
+            Number of rounds to wait for no improvement in validation loss before stopping training, by default 5.
+        tolerance : float, optional
+            Tolerance for early stopping, by default 1e-4.
         n_ensemble_configurations : int, optional
             Ensemble configuration in TabPFN classifier, by default 4. A highe value will slow down prediction.
         """
-
-        if not (n_samples <= TabPFNConstants.MAX_INP_SIZE):
-            raise ValueError(
-                f"n_samples must be less than or equal to {TabPFNConstants.MAX_INP_SIZE}, got {n_samples}"
-            )
-
-        if not (n_features <= TabPFNConstants.MAX_FEAT_SIZE):
-            raise ValueError(
-                f"n_features must be less than or equal to {TabPFNConstants.MAX_FEAT_SIZE}, got {n_features}"
-            )
-
-        self.n_samples = n_samples
-        self.n_features = n_features
-        self.data_sampler: DataSampler = get_data_sampler(
-            sampler_type=data_sampler
-        )(n_samples=n_samples)
-        self.feature_sampler = FeatureSampler(n_features=n_features)
         self.max_iters: int = max_iters
+        self.random_state: Optional[int] = random_state
+        self.early_stopping_rounds: int = early_stopping_rounds
+        self.tolerance: float = tolerance
         self.n_ensemble_configurations: int = n_ensemble_configurations
 
-    def _data_subsample(
-        self,
-        X: np.ndarray,
-        y: np.ndarray,
-        stratify: Optional[np.ndarray] = None,
-    ):
-        _x, _y = self.data_sampler.sample(X, y, stratify=stratify)
-        return (_x, _y)
-
-    def _feat_subsample(
-        self,
-        X: np.ndarray,
-        y: Optional[np.ndarray] = None,
-        transform: bool = False,
-    ) -> List[np.ndarray]:
-        if transform:
-            return self.feature_sampler.reduce(X)
-        return self.feature_sampler.sample(X, y)  # type: ignore
-
-    def _generate_ensemble(
-        self,
-        X: np.ndarray,
-        y: np.ndarray,
-        stratify: Optional[np.ndarray] = None,
-    ):
-        iter = 0
-        while iter < self.max_iters:
-            data = self._data_subsample(X, y, stratify=stratify)
-            self.ensembles_.append(data)
-            iter += 1
+        if verbose:
+            logger.setLevel(logging.DEBUG)
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Generate ensembles to use during prediction
@@ -105,79 +81,64 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             Target variable of shape(n_samples)
         """
         X, y = check_X_y(X, y, force_all_finite=False)
-        self.ensembles_ = []
-        if X.shape[0] < self.n_samples:
-            # If the input size is smaller than what TabPFN can
-            # work with, then generating ensembles is not required
-            self.ensembles_.append((X, y))
-            return
+        bldr = EnsembleBuilder(self.max_iters, self.random_state)
+        self.ensembles_ = bldr.build(X, y)
+        self.classes_ = np.unique(y).size
 
-        self._generate_ensemble(X, y)
+    def save_model(self, path) -> None:
+        with open(path, "wb") as f:
+            pickle.dump(self.ensembles_, f)
 
-    def _predict_with_data_ensembles(self, X: np.ndarray, model: TabPFNClassifier) -> Result:
-        result = Result()
-        for data in self.ensembles_:
-            _x, _y = data
-            model.fit(_x, _y)
-            p = model.predict_proba(X)
-            pred = np.argmax(p, axis=-1)
-            proba1 = p[:,1]
-            result.raw_preds.append(pred)
-            result.raw_probs.append(proba1)
-        return result
+    @classmethod
+    def load_model(cls, path):
+        model = cls()
+        model.ensembles_ = pickle.load(open(path, "rb"))
+        return model
 
-    def _predict_with_data_and_feature_ensembles(self, X: np.ndarray, model: TabPFNClassifier) -> Result:
-        result = Result()
-        for data in self.ensembles_:
-            _x, _y = data
-            feature_result = Result()
+    def _predict(self, X: np.ndarray) -> Result:
+        check_is_fitted(self, attributes="ensembles_")
+
+        # TODO Move to init
+        model = TabPFNClassifier(
+            device=DEVICE,
+            N_ensemble_configurations=self.n_ensemble_configurations,
+        )
+
+        result = Result(
+            samples=X.shape[0],
+            classes=self.classes_,
+            tolerance=self.tolerance,
+            patience=self.early_stopping_rounds,
+        )
+
+        # Set initial values
+        indices = np.arange(X.shape[0])
+
+        for itr in range(self.max_iters):
+            logger.debug(f"==========Evaluating ensemble {itr}============")
+            _x, _y = self.ensembles_[itr].data
+            self.feature_sampler.samplers = self.ensembles_[itr].feat_samplers
             train_x_sampled_features = self._feat_subsample(_x, _y)
             test_x_sampled_features = self._feat_subsample(X, transform=True)
             for train_new, test_new in zip(
                 train_x_sampled_features, test_x_sampled_features
             ):
                 model.fit(train_new, _y)
-                p = model.predict_proba(test_new)
-                pred = np.argmax(p, axis=-1)
-                proba1 = p[:,1]
-                feature_result.raw_preds.append(pred)
-                feature_result.raw_probs.append(proba1)
-            feature_result.aggregate()
-            result.raw_preds.append(feature_result.preds)
-            result.raw_probs.append(feature_result.probs)
+                p = model.predict_proba(test_new[indices])
 
-        return result
+                curr_mean = result.prob_mean.copy()
+                curr_mean[indices] = (p + result.prob_mean[indices]) / (
+                    result.ensembles[indices] + 1
+                )[:, None]
+                result.compare_preds(curr_mean)
 
-    def _predict(self, X: np.ndarray) -> Result:
-        """Runs TabPFN predictions on ensembles of data samples and feature samples
+                indices = np.arange(X.shape[0])[result.freeze == False]
+                logger.debug(f"Remaining samples: {len(indices)}")
 
-        Checks whether features need to be sampled depending on the input data
-        shape and the n_features specified during instantiation.
-        Parameters
-        ----------
-        X : np.ndarray
-            The test input of the shape (n_samples, m_features)
-
-        Returns
-        -------
-        Result
-            Result object containing the raw predictions and raw probabilities across ensembles.
-        """
-        model = TabPFNClassifier(
-            device=DEVICE,
-            N_ensemble_configurations=self.n_ensemble_configurations,
-        )
-
-        check_is_fitted(self, attributes="ensembles_")
-
-        sample_features = True if X.shape[1] > self.n_features else False
-
-        if sample_features:
-            result = self._predict_with_data_and_feature_ensembles(X, model)
-
-        else:
-            result = self._predict_with_data_ensembles(X, model)
-
+                if len(indices) == 0:
+                    break
+            if len(indices) == 0:
+                break
         return result
 
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -196,7 +157,6 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             The predicted classes for X by aggregating results across ensembles.
         """
         result = self._predict(X)
-        result.aggregate()
         return result.preds
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
@@ -215,5 +175,4 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             The probability estimates for X by aggregating results across ensembles.
         """
         result = self._predict(X)
-        result.aggregate()
         return result.probs
