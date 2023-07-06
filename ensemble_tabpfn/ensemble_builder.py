@@ -43,18 +43,18 @@ class EnsembleBuilder:
             )
         self.max_iters: int = max_iters
         self.data_sampler: DataSampler = get_data_sampler(sampler_type=data_sampler)(
-            n_samples=n_samples
+            n_samples=n_samples, random_state=random_state
         )
-        self.feature_sampler = FeatureSampler(n_features=n_features)
-        self.random_state: Optional[int] = random_state
+        self.feature_sampler = FeatureSampler(
+            n_features=n_features, random_state=random_state
+        )
 
     def _data_subsample(
         self,
         X: np.ndarray,
         y: np.ndarray,
-        random_state: Optional[int] = None,
     ):
-        _x, _y, indices = self.data_sampler.sample(X, y, random_state=random_state)
+        _x, _y, indices = self.data_sampler.sample(X, y)
         return (_x, _y, indices)
 
     def _feat_subsample(
@@ -62,7 +62,7 @@ class EnsembleBuilder:
         X: np.ndarray,
         y: Optional[np.ndarray] = None,
     ) -> List[np.ndarray]:
-            return self.feature_sampler.sample(X, y)  # type: ignore
+        return self.feature_sampler.sample(X, y)  # type: ignore
 
     def _generate_ensembles(
         self,
@@ -72,7 +72,7 @@ class EnsembleBuilder:
         # Implement early stopping
         ensembles = []
         for _iter in range(self.max_iters):
-            _x, _y, indices = self._data_subsample(X, y, random_state=self.random_state)
+            _x, _y, indices = self._data_subsample(X, y)
             sampled_data = self._feat_subsample(_x, _y)
             ensemble = Ensemble(
                 data=(sampled_data, _y),

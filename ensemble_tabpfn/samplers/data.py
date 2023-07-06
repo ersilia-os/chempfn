@@ -20,7 +20,6 @@ class DataSampler:
         self,
         X: np.ndarray,
         y: np.ndarray,
-        random_state: Optional[int] = None,
     ) -> List[np.ndarray]:
         raise NotImplementedError
 
@@ -28,7 +27,12 @@ class DataSampler:
 class BootstrapSampler(DataSampler):
     """Perform bootstrap sampling on data with replacement"""
 
-    def __init__(self, n_samples: int = TabPFNConstants.MAX_INP_SIZE) -> None:
+    def __init__(
+        self,
+        n_samples: int = TabPFNConstants.MAX_INP_SIZE,
+        random_state: Optional[int] = None,
+    ) -> None:
+        self.random_state = random_state
         super().__init__(n_samples=n_samples)
 
     def sample(
@@ -36,14 +40,9 @@ class BootstrapSampler(DataSampler):
         X: np.ndarray,
         y: np.ndarray,
         replace: bool = True,
-        random_state: Optional[int] = None,
     ) -> List[np.ndarray]:
-        np.random.seed(random_state)
-        indices = np.random.choice(
-            X.shape[0],
-            size=self.n_samples,
-            replace=replace
-        )
+        np.random.seed(self.random_state)
+        indices = np.random.choice(X.shape[0], size=self.n_samples, replace=replace)
         return [X[indices], y[indices], indices]
 
 

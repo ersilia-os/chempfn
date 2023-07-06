@@ -25,6 +25,7 @@ class BaseSampler:
         self,
         n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
         supervised: bool = False,
+        random_state: Optional[int] = None,
     ) -> None:
         """Constructor for BaseSampler interface.
 
@@ -98,7 +99,9 @@ class SelectKSampler(BaseSampler):
     """Select K Best according to chi2 scores."""
 
     def __init__(
-        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+        self,
+        n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
+        random_state: Optional[int] = None,
     ) -> None:
         super().__init__(n_features, supervised=True)
         self.sampler = SelectKBest(f_classif, k=self.n_features)
@@ -108,7 +111,9 @@ class ClusterSampler(BaseSampler):
     """Performs heirarchical clustering to agglomerate similar features."""
 
     def __init__(
-        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+        self,
+        n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
+        random_state: Optional[int] = None,
     ) -> None:
         super().__init__(n_features)
         self.sampler = FeatureAgglomeration(n_clusters=self.n_features)
@@ -118,38 +123,44 @@ class LRPSampler(BaseSampler):
     """Low Rank Project sampling to reduce dimensionality in feature space."""
 
     def __init__(
-        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+        self,
+        n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
+        random_state: Optional[int] = None,
     ) -> None:
         super().__init__(n_features, supervised=True)
-        self.sampler = LOL(n_components=self.n_features)
+        self.sampler = LOL(n_components=self.n_features, random_state=random_state)
 
 
 class PCASampler(BaseSampler):
     """PCA Sampling to reduce dimensionality in feature space."""
 
     def __init__(
-        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+        self,
+        n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
+        random_state: Optional[int] = None,
     ) -> None:
         super().__init__(n_features)
-        self.sampler = PCA(n_components=self.n_features)
+        self.sampler = PCA(n_components=self.n_features, random_state=random_state)
 
 
 class RandomSampler(BaseSampler):
     """Randomly selects self.n_features from the feature space."""
 
     def __init__(
-        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+        self,
+        n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
+        random_state: Optional[int] = None,
     ) -> None:
         super().__init__(n_features)
         self.is_fit: bool = False
         self.indices: List[int] = []
         self.sampler = "RandomSampler"
+        self.random_state = random_state
 
     def sample(self, X: np.ndarray, y: np.ndarray) -> np.ndarray:
         if not self.is_fit:
-            self.indices = np.random.choice(
-                X.shape[1], self.n_features
-            ).tolist()
+            np.random.seed(self.random_state)
+            self.indices = np.random.choice(X.shape[1], self.n_features).tolist()
             self.is_fit = True
         return X[:, self.indices]
 
@@ -174,16 +185,18 @@ class FeatureSampler:
     """Generates ensembles of sub sampled features using various samplers."""
 
     def __init__(
-        self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
+        self,
+        n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
+        random_state: Optional[int] = None,
     ) -> None:
         self.samplers = [
-            sampler(n_features) for sampler in sampler_map.values()
+            sampler(n_features, random_state) for sampler in sampler_map.values()
         ]
 
     def sample(self, X: np.ndarray, y: np.ndarray) -> List[np.ndarray]:
         """Samples features from the training dataset.
 
-        Create ensembles of sampled features from the training dataset using 
+        Create ensembles of sampled features from the training dataset using
         PCASampler, SelectKSampler LRPSampler, ClusterSampler, and RandomSampler.
 
         Parameters
@@ -224,6 +237,6 @@ class FeatureSampler:
             transforms.append(sampler.reduce(X))
 
         return transforms
-    
+
     def get_samplers(self) -> List[BaseSampler]:
         return self.samplers
