@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -10,11 +10,15 @@ from .samplers.features import BaseSampler
 class Ensemble:
     """Stores the indexes of an ensemble comprising of data and features"""
 
-    __slots__ = ["data_indices", "feat_samplers"]
+    __slots__ = ["data", "data_indices", "feat_samplers"]
 
     def __init__(
-        self, data_indices: List[int], feat_samplers: List[BaseSampler]
+        self,
+        data: Tuple[List[np.ndarray], np.ndarray],
+        data_indices: List[int],
+        feat_samplers: List[np.ndarray],
     ) -> None:
+        self.data = data
         self.data_indices = data_indices
         self.feat_samplers = feat_samplers
 
@@ -57,11 +61,8 @@ class EnsembleBuilder:
         self,
         X: np.ndarray,
         y: Optional[np.ndarray] = None,
-        transform: bool = False,
     ) -> List[np.ndarray]:
-        if transform:
-            return self.feature_sampler.reduce(X)
-        return self.feature_sampler.sample(X, y)  # type: ignore
+            return self.feature_sampler.sample(X, y)  # type: ignore
 
     def _generate_ensembles(
         self,
@@ -72,8 +73,9 @@ class EnsembleBuilder:
         ensembles = []
         for _iter in range(self.max_iters):
             _x, _y, indices = self._data_subsample(X, y, random_state=self.random_state)
-            self._feat_subsample(_x, _y)
+            sampled_data = self._feat_subsample(_x, _y)
             ensemble = Ensemble(
+                data=(sampled_data, _y),
                 data_indices=indices,
                 feat_samplers=self.feature_sampler.get_samplers(),
             )

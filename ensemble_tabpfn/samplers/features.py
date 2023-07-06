@@ -24,7 +24,7 @@ class BaseSampler:
     def __init__(
         self,
         n_features: int = TabPFNConstants.MAX_FEAT_SIZE,
-        fit_with_y: bool = False,
+        supervised: bool = False,
     ) -> None:
         """Constructor for BaseSampler interface.
 
@@ -32,11 +32,11 @@ class BaseSampler:
         ----------
         n_features : int, optional
             Number of features to sample from the feature space, by default TabPFNConstants.MAX_FEAT_SIZE
-        fit_with_y : bool, optional
-            Some feature extraction or selection methods require the target variable y to be present. Set true for fitting with y, by default False.
+        supervised : bool, optional
+            Whether the sampler is supervised or unsupervised, by default False
         """
         self.n_features: int = n_features
-        self.fit_with_y: bool = fit_with_y
+        self.supervised: bool = supervised
         self.sampler: BaseEstimator
 
     def _validate_sampler(self) -> None:
@@ -61,7 +61,7 @@ class BaseSampler:
         """
         self._validate_sampler()
 
-        if self.fit_with_y:
+        if self.supervised:
             return self.sampler.fit_transform(X, y)
         else:
             return self.sampler.fit_transform(X)
@@ -100,7 +100,7 @@ class SelectKSampler(BaseSampler):
     def __init__(
         self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
     ) -> None:
-        super().__init__(n_features, fit_with_y=True)
+        super().__init__(n_features, supervised=True)
         self.sampler = SelectKBest(f_classif, k=self.n_features)
 
 
@@ -120,7 +120,7 @@ class LRPSampler(BaseSampler):
     def __init__(
         self, n_features: int = TabPFNConstants.MAX_FEAT_SIZE
     ) -> None:
-        super().__init__(n_features, fit_with_y=True)
+        super().__init__(n_features, supervised=True)
         self.sampler = LOL(n_components=self.n_features)
 
 

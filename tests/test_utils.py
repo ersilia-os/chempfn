@@ -4,6 +4,7 @@ from ensemble_tabpfn.result import Result
 
 
 @pytest.mark.skip(reason="Implementation Changed")
+#TODO Update tests
 class TestAggregate:
     raw_preds = np.array([1, 0, 0, 1, 1, 0, 0, 0, 1, 1])
     raw_probs = np.array([0.7, 0.2, 0.2, 0.6, 0.7, 0.3, 0.4, 0.4, 0.8, 0.9])

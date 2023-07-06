@@ -5,11 +5,12 @@ import numpy as np
 from sklearn.utils.validation import check_is_fitted, check_X_y
 import torch
 from tabpfn import TabPFNClassifier
-from typing import List, Optional
+from typing import Optional
 import pickle
 
 from .result import Result
 from .ensemble_builder import EnsembleBuilder
+from .samplers import FeatureSampler
 
 # TODO maybe add support for mps backend for Macs
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -95,6 +96,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         model.ensembles_ = pickle.load(open(path, "rb"))
         return model
 
+    
     def _predict(self, X: np.ndarray) -> Result:
         check_is_fitted(self, attributes="ensembles_")
 
@@ -103,6 +105,8 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             device=DEVICE,
             N_ensemble_configurations=self.n_ensemble_configurations,
         )
+
+        feature_sampler = FeatureSampler()
 
         result = Result(
             samples=X.shape[0],
@@ -116,10 +120,9 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
 
         for itr in range(self.max_iters):
             logger.debug(f"==========Evaluating ensemble {itr}============")
-            _x, _y = self.ensembles_[itr].data
-            self.feature_sampler.samplers = self.ensembles_[itr].feat_samplers
-            train_x_sampled_features = self._feat_subsample(_x, _y)
-            test_x_sampled_features = self._feat_subsample(X, transform=True)
+            train_x_sampled_features, _y = self.ensembles_[itr].data
+            feature_sampler.samplers = self.ensembles_[itr].feat_samplers
+            test_x_sampled_features = feature_sampler.reduce(X)
             for train_new, test_new in zip(
                 train_x_sampled_features, test_x_sampled_features
             ):
