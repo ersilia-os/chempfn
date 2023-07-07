@@ -40,7 +40,7 @@ acc = accuracy_score(y_test, y_hat)
 
 ## Citation
 
-If you use this package, please cite the [origianl authors](https://arxiv.org/abs/2207.01848) of the model and [this package](https://github.com/ersilia-os/ensemble-tabpfn/blob/master/CITATION.cff).
+If you use this package, please cite the [original authors](https://arxiv.org/abs/2207.01848) of the model and [this package](https://github.com/ersilia-os/ensemble-tabpfn/blob/master/CITATION.cff).
 
 ## License
 
