@@ -1,12 +1,12 @@
 import logging
+import pickle
+from typing import Optional
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 import numpy as np
 from sklearn.utils.validation import check_is_fitted, check_X_y
 import torch
 from tabpfn import TabPFNClassifier
-from typing import Optional
-import pickle
 
 from .result import Result
 from .ensemble_builder import EnsembleBuilder
@@ -67,6 +67,10 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         self.early_stopping_rounds: int = early_stopping_rounds
         self.tolerance: float = tolerance
         self.n_ensemble_configurations: int = n_ensemble_configurations
+        self.model = TabPFNClassifier(
+            device=DEVICE,
+            N_ensemble_configurations=self.n_ensemble_configurations,
+        )
 
         if verbose:
             logger.setLevel(logging.DEBUG)
@@ -100,12 +104,6 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
     def _predict(self, X: np.ndarray) -> Result:
         check_is_fitted(self, attributes="ensembles_")
 
-        # TODO Move to init
-        model = TabPFNClassifier(
-            device=DEVICE,
-            N_ensemble_configurations=self.n_ensemble_configurations,
-        )
-
         feature_sampler = FeatureSampler()
 
         result = Result(
@@ -126,8 +124,8 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             for train_new, test_new in zip(
                 train_x_sampled_features, test_x_sampled_features
             ):
-                model.fit(train_new, _y)
-                p = model.predict_proba(test_new[indices])
+                self.model.fit(train_new, _y)
+                p = self.model.predict_proba(test_new[indices])
 
                 curr_mean = result.prob_mean.copy()
                 curr_mean[indices] = (p + result.prob_mean[indices]) / (

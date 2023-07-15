@@ -47,3 +47,15 @@ class Result:
     def preds(self) -> np.ndarray:
         """Returns the final predictions."""
         return np.argmax(self.probs, axis=1)
+    
+    def return_ensembles(self) -> np.ndarray:
+        """Return the ensembles used for prediction.
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        return self.ensembles
+    
+    
