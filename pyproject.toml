@@ -10,7 +10,7 @@ packages = [{include = "ensemble_tabpfn"}]
 
 [tool.poetry.dependencies]
 python = "^3.8.1"
-tabpfn = "0.1.8"
+tabpfn = "0.1.9"
 lolP = "0.0.4"
 
 [tool.poetry.group.dev.dependencies]
