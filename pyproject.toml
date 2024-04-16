@@ -6,7 +6,7 @@ authors = ["Ersilia Open Source Initiative"]
 license = "GPL-3.0-only"
 readme = "README.md"
 repository = "https://github.com/ersilia-os/ensemble-tabpfn"
-packages = [{include = "ensemble_tabpfn"}]
+packages = [{include = "chempfn"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
