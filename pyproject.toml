@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "ensemble-tabpfn"
+name = "chempfn"
 version = "0.1.0"
 description = "Adaptation of TabPFN to work with large tabular datasets."
 authors = ["Ersilia Open Source Initiative"]
