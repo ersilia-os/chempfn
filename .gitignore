@@ -136,3 +136,10 @@ dmypy.json
 
 # Ignore TDC data
 notebooks/data/
+data/hia_hou.tab
+
+# Ignore poetry lock file
+poetry.lock
+
+# Ignore test artifacts
+tests/artifacts/*

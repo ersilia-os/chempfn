@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from ensemble_tabpfn.result import Result
+from chempfn.result import Result
 
 
 @pytest.mark.skip(reason="Implementation Changed")
