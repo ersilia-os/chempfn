@@ -27,10 +27,10 @@ logger.addHandler(c_handler)
 class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
     def __init__(
         self,
-        max_iters: int = 100,
+        max_iters: int = 10,
         random_state: Optional[int] = None,
         early_stopping_rounds: int = 5,
-        tolerance: float = 1e-4,
+        tolerance: float = 1e-2,
         n_ensemble_configurations: int = 4,
         verbose: bool = False,  # TODO: very hacky, there should be a better way to do this
     ) -> None:
