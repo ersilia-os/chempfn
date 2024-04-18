@@ -32,7 +32,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         early_stopping_rounds: int = 5,
         tolerance: float = 1e-2,
         n_ensemble_configurations: int = 4,
-        verbose: bool = False,  # TODO: very hacky, there should be a better way to do this
+        verbose: bool = True,  # TODO: very hacky, there should be a better way to do this
     ) -> None:
         """Ensemble TabPFN estimator class that performs data transformations to work with TabPFN.
 
@@ -62,18 +62,20 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         n_ensemble_configurations : int, optional
             Ensemble configuration in TabPFN classifier, by default 4. A highe value will slow down prediction.
         """
+        if verbose:
+            logger.setLevel(logging.DEBUG)
+
         self.max_iters: int = max_iters
         self.random_state: Optional[int] = random_state
         self.early_stopping_rounds: int = early_stopping_rounds
         self.tolerance: float = tolerance
         self.n_ensemble_configurations: int = n_ensemble_configurations
+        logger.debug(f"Device: {DEVICE}")
         self.model = TabPFNClassifier(
             device=DEVICE,
             N_ensemble_configurations=self.n_ensemble_configurations,
         )
 
-        if verbose:
-            logger.setLevel(logging.DEBUG)
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Generate ensembles to use during prediction
