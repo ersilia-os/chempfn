@@ -10,7 +10,7 @@ class ChemPFN:
         random_state: Optional[int] = None,
         early_stopping_rounds: int = 5,
         tolerance: float = 1e-2,
-        verbose: bool = True
+        verbose: bool = False
     ) -> None:
         self.etpfn = EnsembleTabPFN(
             max_iters=max_iters,
