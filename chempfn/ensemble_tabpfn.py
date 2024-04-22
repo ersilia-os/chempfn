@@ -56,7 +56,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         random_state : int, optional
             Random state to use for reproducibility in data and feature subsampling, by default None.
         early_stopping_rounds : int, optional
-            Number of rounds to wait for no improvement in validation loss before stopping training, by default 5.
+            Number of rounds to wait for no improvement in validation loss before stopping training, by default 5. This sets the patience.
         tolerance : float, optional
             Tolerance for early stopping, by default 1e-4.
         n_ensemble_configurations : int, optional
