@@ -3,6 +3,7 @@ import pickle
 from typing import Optional
 
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.naive_bayes import BernoulliNB as BaselineClassifier
 import numpy as np
 from sklearn.utils.validation import check_is_fitted, check_X_y
 import torch
@@ -32,7 +33,8 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         early_stopping_rounds: int = 5,
         tolerance: float = 1e-2,
         n_ensemble_configurations: int = 4,
-        verbose: bool = True,  # TODO: very hacky, there should be a better way to do this
+        verbose: bool = True, # TODO: very hacky, there should be a better way to do this
+        baseline: bool = False,
     ) -> None:
         """Ensemble TabPFN estimator class that performs data transformations to work with TabPFN.
 
@@ -71,11 +73,12 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         self.tolerance: float = tolerance
         self.n_ensemble_configurations: int = n_ensemble_configurations
         logger.debug(f"Device: {DEVICE}")
-        self.model = TabPFNClassifier(
-            device=DEVICE,
-            N_ensemble_configurations=self.n_ensemble_configurations,
-        )
-
+        if not baseline:
+            self.model = TabPFNClassifier(
+                device=DEVICE,
+                N_ensemble_configurations=self.n_ensemble_configurations,)
+        else:
+            self.model = BaselineClassifier()
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """Generate ensembles to use during prediction
