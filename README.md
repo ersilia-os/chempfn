@@ -39,21 +39,20 @@ acc = accuracy_score(y_test, y_hat)
 
 We provide a utility class to retrieve pre processed antimicrobial datasets. We list below the pathogens that are currently supported. For each pathogen, we allow the user to select a confidence level (hc or lc) for obtaining the assay activity.
 
-- abaumannii
-- calbicans
-- campylorbacter
-- ecoli
-- efaecium
-- enterobacter
-- hpylori
-- kpneumoniae
-- mtuberculosis
-- ngonorrhoeae
-- paeruginosa
-- pfalciparum
-- saureus
-- smansonii
-- spneumoniae
+- Acinetobacter baumannii
+- Campylobacter spp.
+- Enterococcus faecium
+- Enterobacter spp.
+- Escherichia coli
+- Helicobacter pylori
+- Klebsiella pneumoniae
+- Mycobacterium tuberculosis
+- Neisseria gonorrhoeae
+- Plasmodium spp.
+- Pseudomonas aeruginosa
+- Schistosoma mansoni
+- Staphylococcus aureus
+- Streptococcus pneumoniae
 
 ```python
 # Import the dataset loader
