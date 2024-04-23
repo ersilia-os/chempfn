@@ -41,7 +41,7 @@ class ChemPFN:
     def evaluate(self, smiles_list, y):
         data = {}
         data["n_pos"] = int(np.sum(y))
-        data["n_neg"] = len(y) - len(np.sum(y))
+        data["n_neg"] = len(y) - np.sum(y)
         splitter = StratifiedKFold(shuffle=True, random_state=42, n_splits=5)
         aurocs = []
         t0 = time.time()
