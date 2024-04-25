@@ -49,7 +49,7 @@ ANTIMICROBIAL_PATHOGENS = {
 }
 
 
-class AntiMicrobialsDatasetLoader:
+class AntiMicrobialsDataLoader:
     """Class to load the AntiMicrobial dataset from S3."""
 
     def __init__(self) -> None:
@@ -115,15 +115,18 @@ class AntiMicrobialsDatasetLoader:
         _pathogen, _cutoff, _dataset_type, _assay_num = self._validate_input(
             pathogen, dataset_type, cutoff, assay_num
         )
-        url = f"{self.base_url}/{self.folder}/{_pathogen}/{_pathogen}_{_dataset_type}_{_cutoff}_{_assay_num}.csv"
+        if _assay_num:
+            url = f"{self.base_url}/{self.folder}/{_pathogen}/{_pathogen}_{_dataset_type}_{_cutoff}_{_assay_num}.csv"
+        else:
+            url = f"{self.base_url}/{self.folder}/{_pathogen}/{_pathogen}_{_dataset_type}_{_cutoff}.csv"
         try:
             df = pd.read_csv(url)
         except HTTPError:
             print(
                 f"Dataset unavailable for Pathogen: {pathogen}, Dataset Type: {dataset_type}, cutoff: {cutoff}"
-                + f", and Top {assay_num} assay."
+                + (f", and Top {assay_num} assay."
                 if assay_num
-                else "."
+                else ".")
             )
             return
         return df
