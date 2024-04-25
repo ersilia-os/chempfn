@@ -79,20 +79,14 @@ def filter_molecules(mols):
 cols = st.columns(3)
 
 mols_act = (
-    cols[0]
-    .text_area("Active molecules", height=TEXT_AREA_HEIGHT)
-    .split(os.linesep)
+    cols[0].text_area("Active molecules", height=TEXT_AREA_HEIGHT).split(os.linesep)
 )
 
 mols_inact = (
-    cols[1]
-    .text_area("Inactive molecules", height=TEXT_AREA_HEIGHT)
-    .split(os.linesep)
+    cols[1].text_area("Inactive molecules", height=TEXT_AREA_HEIGHT).split(os.linesep)
 )
 mols_query = (
-    cols[2]
-    .text_area("Query molecules", height=TEXT_AREA_HEIGHT)
-    .split(os.linesep)
+    cols[2].text_area("Query molecules", height=TEXT_AREA_HEIGHT).split(os.linesep)
 )
 
 mols_act = filter_molecules(mols_act)

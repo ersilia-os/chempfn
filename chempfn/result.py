@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Result:
     """Stores the result from EnsembleTabPFN predictions"""
 
@@ -30,9 +31,7 @@ class Result:
 
     def compare_preds(self, curr_mean) -> None:
         """Compares current and previous mean predictions."""
-        no_change = np.any(
-            np.abs(self.prob_mean - curr_mean) < self.tolerance, axis=1
-        )
+        no_change = np.any(np.abs(self.prob_mean - curr_mean) < self.tolerance, axis=1)
         self.no_change_count += no_change
         self.prob_mean[~no_change] = curr_mean[~no_change]
         self.ensembles[~no_change] += 1
@@ -47,7 +46,7 @@ class Result:
     def preds(self) -> np.ndarray:
         """Returns the final predictions."""
         return np.argmax(self.probs, axis=1)
-    
+
     def return_ensembles(self) -> np.ndarray:
         """Return the ensembles used for prediction.
 
@@ -57,5 +56,3 @@ class Result:
             _description_
         """
         return self.ensembles
-    
-    

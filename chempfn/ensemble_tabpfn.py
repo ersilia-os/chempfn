@@ -33,7 +33,7 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         early_stopping_rounds: int = 5,
         tolerance: float = 1e-2,
         n_ensemble_configurations: int = 4,
-        verbose: bool = True, # TODO: very hacky, there should be a better way to do this
+        verbose: bool = True,  # TODO: very hacky, there should be a better way to do this
         baseline: bool = False,
     ) -> None:
         """Ensemble TabPFN estimator class that performs data transformations to work with TabPFN.
@@ -63,6 +63,8 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
             Tolerance for early stopping, by default 1e-4.
         n_ensemble_configurations : int, optional
             Ensemble configuration in TabPFN classifier, by default 4. A highe value will slow down prediction.
+        baseline: bool, optional
+            Use a simple baseline classifier instead of TabPFN, by default False
         """
         if verbose:
             logger.setLevel(logging.DEBUG)
@@ -76,7 +78,8 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         if not baseline:
             self.model = TabPFNClassifier(
                 device=DEVICE,
-                N_ensemble_configurations=self.n_ensemble_configurations,)
+                N_ensemble_configurations=self.n_ensemble_configurations,
+            )
         else:
             self.model = BaselineClassifier()
 
@@ -105,7 +108,6 @@ class EnsembleTabPFN(BaseEstimator, ClassifierMixin):
         model.ensembles_ = pickle.load(open(path, "rb"))
         return model
 
-    
     def _predict(self, X: np.ndarray) -> Result:
         check_is_fitted(self, attributes="ensembles_")
 

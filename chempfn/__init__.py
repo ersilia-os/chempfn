@@ -1,5 +1,5 @@
 from typing import Optional
-import time 
+import time
 
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_curve, auc
@@ -17,15 +17,15 @@ class ChemPFN:
         random_state: Optional[int] = None,
         early_stopping_rounds: int = 5,
         tolerance: float = 1e-2,
-        verbose: bool = False
+        verbose: bool = False,
     ) -> None:
         self.etpfn = EnsembleTabPFN(
             max_iters=max_iters,
             random_state=random_state,
             early_stopping_rounds=early_stopping_rounds,
-            tolerance=tolerance,  
+            tolerance=tolerance,
             verbose=verbose,
-            baseline=False 
+            baseline=False,
         )
         self.eosce = ErsiliaCompoundEmbeddings()
 
@@ -45,13 +45,15 @@ class ChemPFN:
         splitter = StratifiedKFold(shuffle=True, random_state=42, n_splits=5)
         aurocs = []
         t0 = time.time()
-        for train_idx, test_idx in tqdm(splitter.split([i for i in range(len(smiles_list))], y)):
+        for train_idx, test_idx in tqdm(
+            splitter.split([i for i in range(len(smiles_list))], y)
+        ):
             train_smiles = [smiles_list[idx] for idx in train_idx]
             test_smiles = [smiles_list[idx] for idx in test_idx]
             train_y = [y[idx] for idx in train_idx]
             test_y = [y[idx] for idx in test_idx]
             self.fit(train_smiles, train_y)
-            y_hat = self.predict_proba(test_smiles)[:,1]
+            y_hat = self.predict_proba(test_smiles)[:, 1]
             fpr, tpr, _ = roc_curve(test_y, y_hat)
             auroc = auc(fpr, tpr)
             aurocs += [auroc]
@@ -60,4 +62,3 @@ class ChemPFN:
         data["auroc_std"] = np.std(aurocs)
         data["time_elapsed_sec"] = t1 - t0
         return data
-            

@@ -6,11 +6,12 @@ import numpy as np
 from chempfn import EnsembleTabPFN
 from chempfn.ensemble_builder import EnsembleBuilder
 
+
 @pytest.fixture(scope="module")
 def ensembles():
     X = np.random.rand(2000, 200)
     y = np.random.rand(2000)
-    
+
     ensemble_builder = EnsembleBuilder(max_iters=10)
     ensembles = ensemble_builder.build(X, y)
     yield ensembles
@@ -18,6 +19,7 @@ def ensembles():
 
 class TestEnsembleTabPFN:
     SAVED_MODEL_PATH = "tests/artifacts/ensemble.pkl"
+
     def test_estimator_creation(self):
         """Test that the estimator can be instantiated."""
         ensemble_tabpfn = EnsembleTabPFN()
