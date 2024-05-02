@@ -12,7 +12,8 @@ packages = [{include = "chempfn"}]
 python = "^3.9"
 tabpfn = "0.1.9"
 lolP = "0.0.4"
-eosce = { git = "https://github.com/ersilia-os/compound-embedding-lite.git", branch = "main" , python = ">=3.10,<4.0.0"}
+eosce = { git = "https://github.com/ersilia-os/compound-embedding-lite.git", branch = "main",  python = ">=3.10,<4.0.0"}
+tqdm = "4.65.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "23.1.0"
