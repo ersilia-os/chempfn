@@ -1,0 +1,16 @@
+smiles,activity
+CCCCc1oc2ccccc2c1C(=O)c1cc(I)c(OCCN(CC)CC)c(I)c1,0
+CN(C)CCC=C1c2ccccc2CCc2ccccc21,1
+CCOC(=O)C1=C(COCCN)NC(C)=C(C(=O)OC)C1c1ccccc1Cl,0
+CCN(CC)Cc1cc(Nc2ccnc3cc(Cl)ccc23)ccc1O,1
+CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccc(O)cc3)C(=O)N2[C@H]1C(=O)O.O.O.O,0
+C[C@@H]1OC(=O)C[C@H](O)C[C@H](O)CC[C@@H](O)[C@H](O)C[C@H](O)C[C@]2(O)C[C@H](O)[C@@H](C(=O)O)[C@H](C[C@@H](O[C@@H]3O[C@H](C)[C@@H](O)[C@H](N)[C@@H]3O)/C=C\C=C/C=C\C=C/C=C\C=C/C=C\[C@H](C)[C@@H](O)[C@H]1C)O2,1
+CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccccc3)C(=O)N2[C@H]1C(=O)O,0
+CC(C)(C#N)c1cc(Cn2cncn2)cc(C(C)(C)C#N)c1,1
+CCCCCOc1ccc(-c2ccc(-c3ccc(C(=O)N[C@H]4C[C@@H](O)[C@@H](O)NC(=O)[C@@H]5[C@@H](O)[C@@H](C)CN5C(=O)[C@H]([C@H](C)O)NC(=O)[C@H]([C@H](O)[C@@H](O)c5ccc(O)cc5)NC(=O)[C@@H]5C[C@@H](O)CN5C(=O)[C@H]([C@H](C)O)NC4=O)cc3)cc2)cc1,0
+COc1ccc(-n2nc(C(N)=O)c3c2C(=O)N(c2ccc(N4CCCCC4=O)cc2)CC3)cc1,0
+C[C@@H](O[C@@H]1OCCN(Cc2nc(=O)[nH][nH]2)[C@@H]1c1ccc(F)cc1)c1cc(C(F)(F)F)cc(C(F)(F)F)c1,1
+O=[As]O[As]=O,0
+CO[C@H]1O[C@@H]2O[C@@]3(C)CC[C@H]4[C@H](C)CC[C@@H]([C@H]1C)[C@]42OO3,0
+C[C@@H]1CC[C@H]2[C@@H](C)[C@@H](OC(=O)CCC(=O)O)O[C@@H]3OC4(C)CC[C@@H]1[C@@]23OO4,0
+O=C1C(O)=C(O)OC1C(O)CO,1

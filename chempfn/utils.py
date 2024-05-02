@@ -89,12 +89,25 @@ class AntiMicrobialsDataLoader:
         assay_num = self._check_top_n_assays(assay_num)
         return (pathogen, cutoff, dataset_type, assay_num)
 
+    def _build_url_from_input(
+        self, pathogen: str, dataset_type: str, cutoff: str, assay_num: str
+    ) -> str:
+        _pathogen, _cutoff, _dataset_type, _assay_num = self._validate_input(
+            pathogen, dataset_type, cutoff, assay_num
+        )
+        if _assay_num:
+            url = f"{self.base_url}/{self.folder}/{_pathogen}/{_pathogen}_{_dataset_type}_{_cutoff}_{_assay_num}.csv"
+        else:
+            url = f"{self.base_url}/{self.folder}/{_pathogen}/{_pathogen}_{_dataset_type}_{_cutoff}.csv"
+        return url
+
     def load(
         self,
         pathogen: str,
         cutoff: str = AntiMicrobialsDatasetCutoff.HIGH.value,
-        dataset_type: str = ANTI_MICROBIALS_DATASET_TYPES["organism"],
+        dataset_type: str = "organism",
         assay_num: str = "",
+        fully_qualified: str = ""
     ) -> Optional[pd.DataFrame]:
         """Load the AntiMicrobial dataset from S3.
 
@@ -115,18 +128,17 @@ class AntiMicrobialsDataLoader:
         _pathogen, _cutoff, _dataset_type, _assay_num = self._validate_input(
             pathogen, dataset_type, cutoff, assay_num
         )
-        if _assay_num:
-            url = f"{self.base_url}/{self.folder}/{_pathogen}/{_pathogen}_{_dataset_type}_{_cutoff}_{_assay_num}.csv"
+        if fully_qualified:
+            url = f"{self.base_url}/{self.folder}/{_pathogen}/{fully_qualified}.csv"
+
         else:
-            url = f"{self.base_url}/{self.folder}/{_pathogen}/{_pathogen}_{_dataset_type}_{_cutoff}.csv"
+            url = self._build_url_from_input(
+                pathogen, dataset_type, cutoff, assay_num
+            )
+            
         try:
             df = pd.read_csv(url)
         except HTTPError:
-            print(
-                f"Dataset unavailable for Pathogen: {pathogen}, Dataset Type: {dataset_type}, cutoff: {cutoff}"
-                + (f", and Top {assay_num} assay."
-                if assay_num
-                else ".")
-            )
-            return
+                print(f"This dataset is not available for the pathogen: {pathogen}")
+                return None
         return df
